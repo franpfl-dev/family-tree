@@ -681,6 +681,7 @@ export default function TreeCanvas() {
         canvasWidth={canvasWidth}
         canvasHeight={canvasHeight}
         pan={pan}
+        zoomScale={scale}
         onPanTo={handleMinimapPan}
       />
 

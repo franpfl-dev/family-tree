@@ -10,19 +10,19 @@ import { NODE_W, NODE_H, COUPLE_W, COUPLE_H } from '../hooks/useTreeLayout';
 const MAP_W = 160;
 const MAP_H = 100;
 
-export default function Minimap({ positions, canvasWidth, canvasHeight, pan, onPanTo }) {
+export default function Minimap({ positions, canvasWidth, canvasHeight, pan, zoomScale = 1, onPanTo }) {
   if (!positions || positions.size === 0) return null;
 
   // Scale factor to fit entire canvas into minimap
   const scaleX = MAP_W / Math.max(canvasWidth, 1);
   const scaleY = MAP_H / Math.max(canvasHeight, 1);
-  const scale = Math.min(scaleX, scaleY, 1);
+  const mmScale = Math.min(scaleX, scaleY, 1);
 
-  // Compute viewport indicator
-  const vpW = window.innerWidth * scale;
-  const vpH = (window.innerHeight - 56) * scale;
-  const vpX = -pan.x * scale;
-  const vpY = -pan.y * scale;
+  // Compute viewport indicator (taking canvas zoomScale into account)
+  const vpW = (window.innerWidth / zoomScale) * mmScale;
+  const vpH = ((window.innerHeight - 56) / zoomScale) * mmScale;
+  const vpX = (-pan.x / zoomScale) * mmScale;
+  const vpY = (-pan.y / zoomScale) * mmScale;
 
   // Collect unique blocks (avoid double-rendering couples)
   const blocks = [];
@@ -32,12 +32,12 @@ export default function Minimap({ positions, canvasWidth, canvasHeight, pan, onP
     if (rendered.has(personId)) continue;
     if (pos.isCouple) {
       if (pos.isLeft) {
-        blocks.push({ x: pos.coupleX * scale, y: pos.y * scale, w: COUPLE_W * scale, h: COUPLE_H * scale, isCouple: true });
+        blocks.push({ x: pos.coupleX * mmScale, y: pos.y * mmScale, w: COUPLE_W * mmScale, h: COUPLE_H * mmScale, isCouple: true });
         rendered.add(personId);
         if (pos.spouseId) rendered.add(pos.spouseId);
       }
     } else {
-      blocks.push({ x: pos.x * scale, y: pos.y * scale, w: NODE_W * scale, h: NODE_H * scale, isCouple: false });
+      blocks.push({ x: pos.x * mmScale, y: pos.y * mmScale, w: NODE_W * mmScale, h: NODE_H * mmScale, isCouple: false });
       rendered.add(personId);
     }
   }
@@ -47,9 +47,12 @@ export default function Minimap({ positions, canvasWidth, canvasHeight, pan, onP
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     // Convert minimap click to canvas coordinates and center the view
-    const canvasX = mx / scale;
-    const canvasY = my / scale;
-    onPanTo(-canvasX + window.innerWidth / 2, -canvasY + (window.innerHeight - 56) / 2);
+    const canvasX = mx / mmScale;
+    const canvasY = my / mmScale;
+    onPanTo(
+      window.innerWidth / 2 - canvasX * zoomScale,
+      (window.innerHeight - 56) / 2 - canvasY * zoomScale
+    );
   }
 
   return (
@@ -105,10 +108,10 @@ export default function Minimap({ positions, canvasWidth, canvasHeight, pan, onP
       <div
         style={{
           position: 'absolute',
-          left: Math.max(0, vpX),
-          top: Math.max(0, vpY),
-          width: Math.min(vpW, MAP_W),
-          height: Math.min(vpH, MAP_H),
+          left: vpX,
+          top: vpY,
+          width: vpW,
+          height: vpH,
           border: '1.5px solid var(--color-primary)',
           background: 'rgba(123,63,0,0.08)',
           borderRadius: '3px',
