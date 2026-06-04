@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { Heart, Search, UserPlus, Link2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { searchPersons, getTreeName } from '../utils/familyUtils';
+import { searchPersons, getTreeName, generateId } from '../utils/familyUtils';
 import { Modal, FormField, ToggleRow, inputStyle, primaryBtnStyle, cancelBtnStyle } from './modalShared';
 
 export default function AddSpouseModal({ person, tree, onClose }) {
@@ -46,23 +46,23 @@ export default function AddSpouseModal({ person, tree, onClose }) {
     if (person.spouseId) errs.general = 'This person already has a spouse. Remove the existing spouse first.';
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
+    const newSpouseId = generateId();
+
     addPerson({
       person: {
+        id: newSpouseId,
         name: form.name.trim(),
         gender: form.gender,
         dob: form.dob,
         dod: form.hasDod ? form.dod : null,
         anniversaryDate: form.anniversaryDate || null,
+        spouseId: person.id,
       },
       parentId: null,
       treeId: tree.id,
       level: person.level,
+      spouseOfId: person.id,
     });
-    // After CREATE, we do a LINK_SPOUSE via a separate dispatch.
-    // Since the new spouse's ID is generated in the reducer, we use setTimeout
-    // to dispatch after state update. A proper solution uses the returned ID
-    // or a combined action. For now, we let the user use "Link Existing" to
-    // link after creation. Alternatively we could pass a callback.
     onClose();
   }
 

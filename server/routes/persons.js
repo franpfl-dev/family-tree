@@ -56,6 +56,16 @@ router.post('/', async (req, res) => {
     await Person.findByIdAndUpdate(parentId, { $addToSet: { children: newPerson._id } });
   }
 
+  // If spouseId given, link back to the existing spouse
+  if (person.spouseId) {
+    await Person.findByIdAndUpdate(person.spouseId, {
+      $set: {
+        spouseId: newPerson._id,
+        anniversaryDate: person.anniversaryDate || null
+      }
+    });
+  }
+
   let spousePerson = null;
   if (spouseData?._id && spouseData?.name) {
     spousePerson = await Person.create({

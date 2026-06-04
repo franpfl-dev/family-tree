@@ -104,6 +104,15 @@ export default function EditSpouseModal({ person, tree, onClose }) {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  function handleUnlink() {
+    if (!spouse) return;
+    if (window.confirm(`Are you sure you want to unlink ${spouse.name} and ${person.name}? They will remain in the database but will no longer be shown as married.`)) {
+      updatePerson(person.id, { spouseId: null, anniversaryDate: null });
+      updatePerson(spouse.id, { spouseId: null, anniversaryDate: null });
+      onClose();
+    }
+  }
+
   if (!spouse) {
     return (
       <Modal
@@ -238,8 +247,22 @@ export default function EditSpouseModal({ person, tree, onClose }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+        <button
+          onClick={handleUnlink}
+          style={{
+            ...cancelBtnStyle,
+            color: 'var(--color-accent)',
+            borderColor: 'rgba(192,57,43,0.3)',
+            background: 'rgba(192,57,43,0.02)',
+            fontWeight: 700,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(192,57,43,0.08)'; e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(192,57,43,0.02)'; e.currentTarget.style.borderColor = 'rgba(192,57,43,0.3)'; }}
+        >
+          Unlink Spouse
+        </button>
         <button
           id="btn-edit-spouse-submit"
           onClick={handleSave}

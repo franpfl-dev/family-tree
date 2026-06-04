@@ -140,9 +140,9 @@ export function familyReducer(state, action) {
     }
 
     // ADD_PERSON
-    // payload: { person: Partial<Person>, parentId?, treeId, level, spouseData? }
+    // payload: { person: Partial<Person>, parentId?, treeId, level, spouseData?, spouseOfId? }
     case ACTIONS.ADD_PERSON: {
-      const { person, parentId, treeId, level, spouseData } = action.payload;
+      const { person, parentId, treeId, level, spouseData, spouseOfId } = action.payload;
 
       const tree = state.trees.find((t) => t.id === treeId);
       if (tree && level >= tree.maxHeight) {
@@ -150,9 +150,9 @@ export function familyReducer(state, action) {
         return state;
       }
 
-      const newId = generateId();
+      const newId = person.id || generateId();
       const hasSpouseData = spouseData && spouseData.name;
-      const spouseId = hasSpouseData ? generateId() : null;
+      const spouseId = hasSpouseData ? generateId() : (spouseOfId || person.spouseId || null);
 
       const newPerson = {
         id: newId,
@@ -162,7 +162,9 @@ export function familyReducer(state, action) {
         dod: person.dod || null,
         profilePhoto: person.profilePhoto || null,
         spouseId: spouseId,
-        anniversaryDate: hasSpouseData ? (spouseData.anniversaryDate || null) : null,
+        anniversaryDate: hasSpouseData
+          ? (spouseData.anniversaryDate || null)
+          : (person.anniversaryDate || null),
         treeId,
         parentId: parentId || null,
         children: [],
@@ -175,6 +177,9 @@ export function familyReducer(state, action) {
       const updatedPersons = state.persons.map((p) => {
         if (p.id === parentId) {
           return { ...p, children: [...(p.children || []), newId] };
+        }
+        if (spouseOfId && p.id === spouseOfId) {
+          return { ...p, spouseId: newId, anniversaryDate: person.anniversaryDate || null };
         }
         return p;
       });

@@ -154,13 +154,15 @@ export function AppProvider({ children }) {
         const persons = saved.persons || [];
 
         // The most recently added person is the one with no backend confirmation yet.
-        // Match by name + treeId + level (reducer just added it).
+        // Match by ID if pre-generated, or name + treeId + level.
         const { person: pData, parentId, treeId, level, spouseData } = payload;
 
         // Find the freshly created person in updated state
-        const newPerson = [...persons]
-          .reverse()
-          .find((p) => p.name === pData.name && p.treeId === treeId && p.level === level);
+        const newPerson = pData.id
+          ? persons.find((p) => p.id === pData.id)
+          : [...persons]
+              .reverse()
+              .find((p) => p.name === pData.name && p.treeId === treeId && p.level === level);
 
         if (!newPerson) return;
 
