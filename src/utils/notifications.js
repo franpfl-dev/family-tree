@@ -108,14 +108,38 @@ function yearsSince(dateStr) {
   } catch { return null; }
 }
 
-/**
- * Check all persons for today's events and fire notifications.
- * Call this on app load when permission is granted.
- */
-export function checkAndNotifyToday(persons, trees, prefs = null) {
-  const p = prefs || loadNotifPrefs();
-  if (!p.enabled || notifPermission() !== 'granted') return;
+const NOTIFIED_KEY = 'familytree_notified_dates'; // tracks what was already notified today
 
+/** Return today's date string "YYYY-MM-DD" */
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/** Load already-notified set for today. Clears if it's a new day. */
+function loadNotifiedSet() {
+  try {
+    const raw = localStorage.getItem(NOTIFIED_KEY);
+    if (!raw) return new Set();
+    const { date, ids } = JSON.parse(raw);
+    if (date !== todayStr()) return new Set(); // new day — reset
+    return new Set(ids);
+  } catch { return new Set(); }
+}
+
+/** Save notified set */
+function saveNotifiedSet(set) {
+  try {
+    localStorage.setItem(NOTIFIED_KEY, JSON.stringify({ date: todayStr(), ids: [...set] }));
+  } catch {}
+}
+
+/**
+ * Build the list of notification payloads for today's events.
+ * Does NOT fire them yet — just returns the list.
+ */
+function buildTodayNotifications(persons, trees, prefs) {
+  const notifications = [];
   const seenCouples = new Set();
 
   for (const person of persons) {
@@ -123,42 +147,124 @@ export function checkAndNotifyToday(persons, trees, prefs = null) {
     const tree = trees.find((t) => t.id === person.treeId);
     const treeName = tree?.name || 'Family';
 
-    // Birthday
-    if (p.birthdays && person.dob && isTodayMonthDay(person.dob)) {
+    if (prefs.birthdays && person.dob && isTodayMonthDay(person.dob)) {
       const age = yearsSince(person.dob);
-      new Notification(`🎂 Happy Birthday ${person.name}!`, {
+      notifications.push({
+        id: `bday-${person.id}`,
+        type: 'birthday',
+        title: `🎂 Happy Birthday ${person.name}!`,
         body: `${person.name} from ${treeName} turns ${age} today!`,
         icon: person.profilePhoto || '/favicon.svg',
         tag: `bday-${person.id}`,
+        dateStr: person.dob,
       });
     }
 
-    // Anniversary
-    if (p.anniversaries && person.anniversaryDate && person.spouseId && isTodayMonthDay(person.anniversaryDate)) {
+    if (prefs.anniversaries && person.anniversaryDate && person.spouseId && isTodayMonthDay(person.anniversaryDate)) {
       const coupleKey = [person.id, person.spouseId].sort().join('-');
       if (!seenCouples.has(coupleKey)) {
         seenCouples.add(coupleKey);
         const spouse = persons.find((q) => q.id === person.spouseId);
         const years = yearsSince(person.anniversaryDate);
         const names = spouse ? `${person.name} & ${spouse.name}` : person.name;
-        new Notification(`💍 Happy Anniversary!`, {
+        notifications.push({
+          id: `anniv-${coupleKey}`,
+          type: 'anniversary',
+          title: `💍 Happy Anniversary!`,
           body: `${names} are celebrating ${years} years together today!`,
           icon: '/favicon.svg',
           tag: `anniv-${coupleKey}`,
+          dateStr: person.anniversaryDate,
         });
       }
     }
 
-    // Remembrance
-    if (p.remembrances && person.dod && isTodayMonthDay(person.dod)) {
+    if (prefs.remembrances && person.dod && isTodayMonthDay(person.dod)) {
       const years = yearsSince(person.dod);
-      new Notification(`🕯️ Remembering ${person.name}`, {
+      notifications.push({
+        id: `dod-${person.id}`,
+        type: 'remembrance',
+        title: `🕯️ Remembering ${person.name}`,
         body: `Today we remember ${person.name}. ${years} year${years !== 1 ? 's' : ''} since their passing.`,
         icon: '/favicon.svg',
         tag: `dod-${person.id}`,
+        dateStr: person.dod,
       });
     }
   }
+  return notifications;
+}
+
+/**
+ * Fire a browser notification immediately and mark it as sent for today.
+ */
+function fireNotification(notif, notifiedSet) {
+  if (notifiedSet.has(notif.id)) return; // already sent today
+  notifiedSet.add(notif.id);
+  saveNotifiedSet(notifiedSet);
+  new Notification(notif.title, {
+    body: notif.body,
+    icon: notif.icon,
+    tag: notif.tag,
+  });
+}
+
+/**
+ * Check all persons for today's events and schedule notifications.
+ *
+ * HOW IT WORKS:
+ *  - If current time is BEFORE reminderHour → sets a setTimeout to fire at reminderHour
+ *  - If current time is AFTER reminderHour → fires immediately (you opened the app late)
+ *  - Each notification is only sent ONCE per day (tracked in localStorage)
+ *
+ * Call this on every app load.
+ */
+export function checkAndNotifyToday(persons, trees, prefs = null) {
+  const p = prefs || loadNotifPrefs();
+  if (!p.enabled || notifPermission() !== 'granted') return;
+
+  const notifications = buildTodayNotifications(persons, trees, p);
+  if (notifications.length === 0) return;
+
+  const notifiedSet = loadNotifiedSet();
+  const pendingNotifs = notifications.filter((n) => !notifiedSet.has(n.id));
+  if (pendingNotifs.length === 0) return;
+
+  // Calculate milliseconds until reminderHour today
+  const now = new Date();
+  const fireAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), p.reminderHour, 0, 0, 0);
+  const msUntilFireTime = fireAt.getTime() - now.getTime();
+
+  if (msUntilFireTime > 0) {
+    // Schedule for later today
+    setTimeout(() => {
+      const freshNotifiedSet = loadNotifiedSet(); // re-read in case another tab fired them
+      pendingNotifs.forEach((n) => fireNotification(n, freshNotifiedSet));
+    }, msUntilFireTime);
+  } else {
+    // Past reminder time — fire now (user opened app late in the day)
+    pendingNotifs.forEach((n) => fireNotification(n, notifiedSet));
+  }
+}
+
+/**
+ * Send today's event list to the Service Worker so it can also fire
+ * notifications if the app is backgrounded (tab open but not in focus).
+ */
+export async function sendEventsToServiceWorker(persons, trees, prefs = null) {
+  if (!('serviceWorker' in navigator)) return;
+  const p = prefs || loadNotifPrefs();
+  if (!p.enabled) return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const notifications = buildTodayNotifications(persons, trees, p);
+    reg.active?.postMessage({
+      type: 'CHECK_TODAY_EVENTS',
+      events: notifications,
+      prefs: p,
+    });
+  } catch { /* SW not ready */ }
 }
 
 /**

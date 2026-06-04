@@ -18,7 +18,7 @@ import CalendarExportModal from '../components/CalendarExportModal';
 import NotificationBanner from '../components/NotificationBanner';
 import NotificationSettings from '../components/NotificationSettings';
 import UpcomingEvents from '../components/UpcomingEvents';
-import { checkAndNotifyToday, loadNotifPrefs } from '../utils/notifications';
+import { checkAndNotifyToday, loadNotifPrefs, sendEventsToServiceWorker } from '../utils/notifications';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -32,11 +32,13 @@ export default function HomeScreen() {
 
   // Register service worker and check today's events on load
   useEffect(() => {
-    // Register SW
+    // Register SW and send today's events to it
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {/* SW not critical */});
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => sendEventsToServiceWorker(persons, trees))
+        .catch(() => {/* SW not critical */});
     }
-    // Fire today's notifications if permitted
+    // Fire today's notifications via the main thread (with scheduling)
     const prefs = loadNotifPrefs();
     if (prefs.enabled) {
       checkAndNotifyToday(persons, trees, prefs);
