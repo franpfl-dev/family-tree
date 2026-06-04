@@ -212,11 +212,20 @@ export function familyReducer(state, action) {
     // payload: { personId, updates: Partial<Person> }
     case ACTIONS.UPDATE_PERSON: {
       const { personId, updates } = action.payload;
+      // Find the person being updated so we can sync anniversaryDate to their spouse
+      const personBeingUpdated = state.persons.find((p) => p.id === personId);
+      const spouseId = personBeingUpdated?.spouseId;
+
       return {
         ...state,
-        persons: state.persons.map((p) =>
-          p.id === personId ? { ...p, ...updates } : p
-        ),
+        persons: state.persons.map((p) => {
+          if (p.id === personId) return { ...p, ...updates };
+          // If anniversaryDate is being changed, mirror it to the spouse
+          if (spouseId && p.id === spouseId && 'anniversaryDate' in updates) {
+            return { ...p, anniversaryDate: updates.anniversaryDate };
+          }
+          return p;
+        }),
       };
     }
 

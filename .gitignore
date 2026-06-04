@@ -26,3 +26,5 @@ family-tree-export.json
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

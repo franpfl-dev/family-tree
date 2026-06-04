@@ -3,11 +3,17 @@
  * Main tree visualization page (/tree/:treeId).
  * Phase 3+4+5: pan, layout, nodes, context menu, modals, minimap,
  * global search, PNG export, placeholder handling, mobile bottom-sheet.
+ *
+ * Zoom/pan:
+ *   - Mouse drag or single-finger drag → pan
+ *   - Pinch (two-finger) → zoom (scale 0.3 – 2.0)
+ *   - Bottom-right zoom buttons: zoom in, zoom out, fit-to-screen
+ *   - On load: auto-fits the entire tree into the viewport
  */
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, Download } from 'lucide-react';
+import { Camera, Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { buildLayout } from '../hooks/useTreeLayout';
 import { getChildrenOf } from '../utils/familyUtils';
@@ -27,6 +33,10 @@ import GlobalSearch from '../components/GlobalSearch';
 import Minimap from '../components/Minimap';
 import NodeTooltip from '../components/NodeTooltip';
 
+const MIN_SCALE = 0.3;
+const MAX_SCALE = 2.0;
+const HEADER_H = 56; // breadcrumb bar height
+
 export default function TreeCanvas() {
   const { treeId } = useParams();
   const navigate = useNavigate();
@@ -41,12 +51,54 @@ export default function TreeCanvas() {
     if (treeId) setActiveTree(treeId);
   }, [treeId, setActiveTree]);
 
-  // ── Pan ──────────────────────────────────────────────────────────────────────
+  // ── Zoom + Pan state ──────────────────────────────────────────────────────────
+  const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef(null);
   const panAtDragStart = useRef({ x: 0, y: 0 });
 
+  // ── Layout ────────────────────────────────────────────────────────────────────
+  const { positions, canvasWidth, canvasHeight } = useMemo(
+    () => buildLayout(tree, persons),
+    [tree, persons]
+  );
+
+  // ── Fit to screen helper ──────────────────────────────────────────────────────
+  const fitToScreen = useCallback(() => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight - HEADER_H;
+
+    const CANVAS_PAD_X = 80;
+    const CANVAS_PAD_TOP = 60;
+    const scaleX = vw / (canvasWidth + CANVAS_PAD_X * 2);
+    const scaleY = vh / (canvasHeight + CANVAS_PAD_TOP * 2);
+    const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), MIN_SCALE), MAX_SCALE);
+
+    // Center the scaled canvas in the viewport
+    const scaledW = canvasWidth * newScale;
+    const scaledH = canvasHeight * newScale;
+    const newPanX = (vw - scaledW) / 2;
+    const newPanY = (vh - scaledH) / 2;
+
+    setScale(newScale);
+    setPan({ x: newPanX, y: newPanY });
+  }, [canvasWidth, canvasHeight]);
+
+  // ── Fit to screen on first load / tree change ─────────────────────────────────
+  const hasFit = useRef(false);
+  useEffect(() => {
+    if (!tree || canvasWidth <= 0) return;
+    hasFit.current = false;
+  }, [treeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!tree || canvasWidth <= 0 || hasFit.current) return;
+    hasFit.current = true;
+    fitToScreen();
+  }, [tree, canvasWidth, canvasHeight, fitToScreen]);
+
+  // ── Mouse pan ─────────────────────────────────────────────────────────────────
   const handleMouseDown = useCallback((e) => {
     if (e.target !== e.currentTarget && e.target.closest('[data-node]')) return;
     setContextMenu(null);
@@ -70,23 +122,97 @@ export default function TreeCanvas() {
     if (e.currentTarget) e.currentTarget.style.cursor = 'grab';
   }, []);
 
-  // Touch pan
+  // ── Mouse wheel zoom ──────────────────────────────────────────────────────────
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.001;
+    setScale((prev) => {
+      const next = Math.min(Math.max(prev + delta, MIN_SCALE), MAX_SCALE);
+      // Zoom toward cursor position
+      const rect = e.currentTarget.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const ratio = next / prev;
+      setPan((p) => ({
+        x: mouseX - ratio * (mouseX - p.x),
+        y: mouseY - ratio * (mouseY - p.y),
+      }));
+      return next;
+    });
+  }, []);
+
+  // ── Touch: single-finger pan + two-finger pinch-zoom ──────────────────────────
   const touchStart = useRef(null);
+  const lastPinchDist = useRef(null);
+  const scaleAtPinchStart = useRef(1);
+  const panAtPinchStart = useRef({ x: 0, y: 0 });
+  const pinchMidpointStart = useRef({ x: 0, y: 0 });
+
+  const getTouchDist = (t1, t2) => {
+    const dx = t1.clientX - t2.clientX;
+    const dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const handleTouchStart = useCallback((e) => {
     if (e.target === e.currentTarget || !e.target.closest('[data-node]')) {
       setContextMenu(null);
       setTooltipPerson(null);
     }
-    const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
-    panAtDragStart.current = pan;
-  }, [pan]);
+    if (e.touches.length === 1) {
+      // Single finger — pan
+      const t = e.touches[0];
+      touchStart.current = { x: t.clientX, y: t.clientY };
+      panAtDragStart.current = pan;
+      lastPinchDist.current = null;
+    } else if (e.touches.length === 2) {
+      // Two fingers — pinch
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      lastPinchDist.current = getTouchDist(t1, t2);
+      scaleAtPinchStart.current = scale;
+      panAtPinchStart.current = pan;
+      pinchMidpointStart.current = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2,
+      };
+      touchStart.current = null; // disable single-finger pan during pinch
+    }
+  }, [pan, scale]);
+
   const handleTouchMove = useCallback((e) => {
-    if (!touchStart.current) return;
-    const t = e.touches[0];
-    setPan({ x: panAtDragStart.current.x + (t.clientX - touchStart.current.x), y: panAtDragStart.current.y + (t.clientY - touchStart.current.y) });
+    e.preventDefault(); // prevent page scroll during pan/pinch
+    if (e.touches.length === 1 && touchStart.current) {
+      // Single finger pan
+      const t = e.touches[0];
+      setPan({
+        x: panAtDragStart.current.x + (t.clientX - touchStart.current.x),
+        y: panAtDragStart.current.y + (t.clientY - touchStart.current.y),
+      });
+    } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
+      // Two-finger pinch zoom
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const newDist = getTouchDist(t1, t2);
+      const ratio = newDist / lastPinchDist.current;
+      const newScale = Math.min(Math.max(scaleAtPinchStart.current * ratio, MIN_SCALE), MAX_SCALE);
+
+      // Zoom anchored to pinch midpoint
+      const mx = pinchMidpointStart.current.x;
+      const my = pinchMidpointStart.current.y;
+      const scaleRatio = newScale / scaleAtPinchStart.current;
+      setScale(newScale);
+      setPan({
+        x: mx - scaleRatio * (mx - panAtPinchStart.current.x),
+        y: my - scaleRatio * (my - panAtPinchStart.current.y),
+      });
+    }
   }, []);
-  const handleTouchEnd = useCallback(() => { touchStart.current = null; }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStart.current = null;
+    lastPinchDist.current = null;
+  }, []);
 
   // ── Highlight (cross-link navigation) ────────────────────────────────────────
   const [highlightedId, setHighlightedId] = useState(null);
@@ -95,12 +221,11 @@ export default function TreeCanvas() {
     const highlight = params.get('highlight');
     if (highlight) {
       setHighlightedId(highlight);
-      // Auto-pan to highlighted node
       const pos = positions.get(highlight);
       if (pos) {
         const cx = window.innerWidth / 2;
-        const cy = (window.innerHeight - 56) / 2;
-        setPan({ x: cx - (pos.x + (pos.width || 0) / 2), y: cy - (pos.y + (pos.height || 0) / 2) });
+        const cy = (window.innerHeight - HEADER_H) / 2;
+        setPan({ x: cx - (pos.x + (pos.width || 0) / 2) * scale, y: cy - (pos.y + (pos.height || 0) / 2) * scale });
       }
       setTimeout(() => setHighlightedId(null), 3500);
     }
@@ -131,12 +256,6 @@ export default function TreeCanvas() {
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
-
-  // ── Layout ────────────────────────────────────────────────────────────────────
-  const { positions, canvasWidth, canvasHeight } = useMemo(
-    () => buildLayout(tree, persons),
-    [tree, persons]
-  );
 
   // ── SVG connector pairs ───────────────────────────────────────────────────────
   const parentChildPairs = useMemo(() => {
@@ -181,26 +300,14 @@ export default function TreeCanvas() {
   }, []);
 
   // ── Resolve canonical parent of a couple ─────────────────────────────────────
-  // When the user right-clicks a spouse card, we need to attach children to the
-  // "main" person of the couple — the one whose parentId places them in the tree
-  // hierarchy (i.e. the one that is NOT a pure spouse-only node). For the root
-  // couple both have parentId === null, so we fall back to whoever has the tree's
-  // rootPersonId, or whoever has an existing children[] array in the data.
   function resolveMainPersonForChild(person) {
-    if (!person.spouseId) return person; // solo node, already main
+    if (!person.spouseId) return person;
     const partner = persons.find((p) => p.id === person.spouseId);
     if (!partner) return person;
-
-    // If one of them is the tree root, that's the main person.
     if (tree && person.id === tree.rootPersonId) return person;
     if (tree && partner.id === tree.rootPersonId) return partner;
-
-    // If one has a parentId and the other doesn't, the one WITH parentId is main.
     if (person.parentId && !partner.parentId) return person;
     if (partner.parentId && !person.parentId) return partner;
-
-    // Fall back: prefer the one whose children array is non-empty,
-    // otherwise just return the clicked person.
     if ((person.children || []).length > 0) return person;
     if ((partner.children || []).length > 0) return partner;
     return person;
@@ -208,14 +315,12 @@ export default function TreeCanvas() {
 
   // ── Context menu actions ───────────────────────────────────────────────────────
   function handleEditDetails(person) { setEditModalPerson(person); }
-
   function handleDeletePerson(person) { setDeleteModalPerson(person); }
 
   function handleConfirmDelete() {
     if (!deleteModalPerson) return;
     const isRoot = deleteModalPerson.level === 0;
     if (isRoot) {
-      // Delete the whole tree
       deleteTree(treeId);
       setDeleteModalPerson(null);
       navigate('/');
@@ -226,7 +331,6 @@ export default function TreeCanvas() {
   }
 
   function handleAddChild(person) {
-    // Always attach to the canonical parent of the couple, not the spouse card.
     const mainPerson = resolveMainPersonForChild(person);
     if (mainPerson.level >= (tree?.maxHeight ?? 3) - 1) {
       alert(`Cannot add child beyond max depth (${tree?.maxHeight}). Use "Add Level Below" on a leaf node first.`);
@@ -236,13 +340,10 @@ export default function TreeCanvas() {
   }
 
   function handleAddSpouse(person) {
-    // Re-read from live persons array to avoid stale closure.
     const livePerson = persons.find((p) => p.id === person.id) || person;
     if (livePerson.spouseId) {
-      // Person already has a spouse — open the edit modal.
       setEditSpousePerson(livePerson);
     } else {
-      // No spouse yet — open the add/link modal.
       setAddSpousePerson(livePerson);
     }
   }
@@ -263,6 +364,36 @@ export default function TreeCanvas() {
     await exportAsPng(canvasRef.current, tree?.name || 'family-tree');
     setIsExporting(false);
   }
+
+  // ── Zoom button helpers ────────────────────────────────────────────────────────
+  const zoomIn = useCallback(() => {
+    setScale((prev) => {
+      const next = Math.min(prev + 0.1, MAX_SCALE);
+      // Keep center of viewport anchored
+      const cx = window.innerWidth / 2;
+      const cy = (window.innerHeight - HEADER_H) / 2;
+      const ratio = next / prev;
+      setPan((p) => ({
+        x: cx - ratio * (cx - p.x),
+        y: cy - ratio * (cy - p.y),
+      }));
+      return next;
+    });
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setScale((prev) => {
+      const next = Math.max(prev - 0.1, MIN_SCALE);
+      const cx = window.innerWidth / 2;
+      const cy = (window.innerHeight - HEADER_H) / 2;
+      const ratio = next / prev;
+      setPan((p) => ({
+        x: cx - ratio * (cx - p.x),
+        y: cy - ratio * (cy - p.y),
+      }));
+      return next;
+    });
+  }, []);
 
   // ── Not found ──────────────────────────────────────────────────────────────────
   if (!tree) {
@@ -330,17 +461,19 @@ export default function TreeCanvas() {
       {/* Breadcrumb with search */}
       <BreadcrumbBar tree={tree} onSearchClick={() => setSearchOpen(true)} />
 
-      {/* Canvas area */}
+      {/* Canvas area — receives all pointer/touch events */}
       <div
         style={{
-          position: 'absolute', inset: 0, paddingTop: '56px',
+          position: 'absolute', inset: 0, paddingTop: `${HEADER_H}px`,
           cursor: isDragging ? 'grabbing' : 'grab',
           overflow: 'hidden',
+          touchAction: 'none', // prevent browser default scroll/zoom — we handle it ourselves
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -353,12 +486,12 @@ export default function TreeCanvas() {
           pointerEvents: 'none',
         }} />
 
-        {/* Pannable content */}
+        {/* Pannable + scalable content */}
         <div
           ref={canvasRef}
           style={{
             position: 'absolute',
-            transform: `translate(${pan.x}px, ${pan.y}px)`,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
             transformOrigin: '0 0',
             width: canvasWidth,
             height: canvasHeight,
@@ -392,20 +525,35 @@ export default function TreeCanvas() {
         <span>·</span>
         Depth: {tree.maxHeight}
         <span style={{ opacity: 0.55, display: window.innerWidth < 640 ? 'none' : 'inline' }}>· Right-click nodes · Press / to search</span>
+        <span style={{ opacity: 0.7 }}>· {Math.round(scale * 100)}%</span>
       </div>
 
-      {/* ── Toolbar (right side) ─────────────────────────────────────────────── */}
+      {/* ── Zoom + Toolbar (right side) ───────────────────────────────────────── */}
       <div style={{
         position: 'fixed', bottom: '1.25rem', right: '1.25rem',
         display: 'flex', flexDirection: 'column', gap: '0.5rem',
         alignItems: 'center',
       }}>
-        {/* Reset pan */}
+        {/* Zoom In */}
         <IconToolBtn
-          id="btn-reset-pan"
-          title="Reset view (center)"
-          onClick={() => setPan({ x: 0, y: 0 })}
-          label="⊙"
+          id="btn-zoom-in"
+          title="Zoom in"
+          onClick={zoomIn}
+          label={<ZoomIn size={16} />}
+        />
+        {/* Zoom Out */}
+        <IconToolBtn
+          id="btn-zoom-out"
+          title="Zoom out"
+          onClick={zoomOut}
+          label={<ZoomOut size={16} />}
+        />
+        {/* Fit to Screen */}
+        <IconToolBtn
+          id="btn-fit-screen"
+          title="Fit to screen"
+          onClick={fitToScreen}
+          label={<Maximize2 size={16} />}
         />
         {/* Export PNG */}
         <IconToolBtn

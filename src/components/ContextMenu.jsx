@@ -92,6 +92,7 @@ export default function ContextMenu({
           top: isMobile ? 'auto' : menuY,
           bottom: isMobile ? 0 : 'auto',
           width: isMobile ? '100vw' : MENU_W,
+          maxHeight: isMobile ? '85vh' : 'none',
           background: 'var(--color-surface)',
           border: isMobile ? 'none' : '1px solid var(--color-border)',
           borderTop: isMobile ? '1.5px solid var(--color-border)' : undefined,
@@ -99,6 +100,8 @@ export default function ContextMenu({
           boxShadow: 'var(--shadow-panel)',
           zIndex: 500,
           overflow: 'hidden',
+          display: isMobile ? 'flex' : 'block',
+          flexDirection: isMobile ? 'column' : undefined,
           animation: isMobile
             ? 'ctxSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
             : 'ctxPopIn 0.15s ease',
@@ -128,7 +131,7 @@ export default function ContextMenu({
         </div>
 
         {/* Menu items */}
-        <div style={{ padding: '0.3rem 0' }}>
+        <div style={{ padding: '0.3rem 0', overflowY: isMobile ? 'auto' : 'visible', flex: isMobile ? '1 1 auto' : undefined, paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0.5rem)' : '0.3rem' }}>
           <MenuItem
             id={`ctx-edit-${person.id}`}
             icon={<Pencil size={14} />}

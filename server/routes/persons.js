@@ -98,6 +98,14 @@ router.put('/:id', async (req, res) => {
   );
   if (!person) return res.status(404).json({ success: false, message: 'Person not found.' });
 
+  // If anniversaryDate is being changed, sync it to the spouse as well
+  if ('anniversaryDate' in updates && person.spouseId) {
+    await Person.findByIdAndUpdate(
+      person.spouseId,
+      { $set: { anniversaryDate: updates.anniversaryDate } }
+    );
+  }
+
   res.json({ success: true, data: person });
 });
 

@@ -196,6 +196,17 @@ export function AppProvider({ children }) {
           }
         }
         await api.updatePerson(personId, cleanUpdates);
+
+        // If anniversaryDate is being changed, sync it to the spouse on the backend too
+        if ('anniversaryDate' in cleanUpdates) {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          const allPersons = saved.persons || [];
+          const person = allPersons.find((p) => p.id === personId);
+          const spouseId = person?.spouseId;
+          if (spouseId) {
+            await api.updatePerson(spouseId, { anniversaryDate: cleanUpdates.anniversaryDate });
+          }
+        }
       } catch (err) {
         handleApiError(err, 'updatePerson');
       }
