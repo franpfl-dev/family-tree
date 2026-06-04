@@ -103,6 +103,35 @@ input, select, textarea {
   }
 }
 
+/* ── 360px narrow screen adjustments ─────────────────────────────────────── */
+@media (max-width: 420px) {
+  /* BreadcrumbBar: hide text labels, keep icons only */
+  .breadcrumb-label {
+    display: none !important;
+  }
+
+  /* Status bar: shrink so it doesn't overlap zoom toolbar */
+  .status-bar {
+    max-width: calc(100vw - 72px) !important;
+    font-size: 0.68rem !important;
+    padding: 0.3rem 0.6rem !important;
+    gap: 0.3rem !important;
+  }
+
+  /* Zoom toolbar: tighter to edge */
+  .zoom-toolbar {
+    right: 6px !important;
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 6px !important;
+  }
+
+  /* Zoom toolbar buttons: slightly smaller on very narrow screens */
+  .zoom-toolbar button {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
 /* ─── 5B: Deceased node enhancements ─────────────────────────────────────── */
 .node-deceased {
   filter: grayscale(0.25);

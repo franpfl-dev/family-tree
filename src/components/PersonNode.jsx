@@ -249,33 +249,33 @@ function CollapseBtn({ isCollapsed, hiddenCount, onToggle }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         position: 'absolute',
-        bottom: '-12px',
+        bottom: '-14px',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: '22px',
-        height: '22px',
+        width: '28px',
+        height: '28px',
         borderRadius: '50%',
-        border: `1.5px solid ${hovered ? 'var(--color-border)' : 'rgba(160,133,108,0.4)'}`,
-        background: hovered ? 'rgba(212,169,106,0.18)' : 'rgba(255,248,240,0.9)',
+        border: `1.5px solid ${hovered ? 'var(--color-border)' : 'rgba(160,133,108,0.5)'}`,
+        background: hovered ? 'rgba(212,169,106,0.22)' : 'rgba(255,248,240,0.95)',
         color: 'var(--color-muted)',
-        fontSize: '9px',
+        fontSize: '10px',
         fontWeight: 700,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 1px 4px rgba(123,63,0,0.1)',
+        boxShadow: '0 2px 6px rgba(123,63,0,0.12)',
         transition: 'all 0.15s',
         lineHeight: 1,
         padding: 0,
         gap: '1px',
         zIndex: 10,
-        minWidth: '22px',
+        minWidth: '28px',
       }}
     >
-      <span style={{ fontSize: '8px' }}>{isCollapsed ? '▶' : '▼'}</span>
+      <span style={{ fontSize: '10px' }}>{isCollapsed ? '▶' : '▼'}</span>
       {isCollapsed && hiddenCount > 0 && (
-        <span style={{ fontSize: '8px' }}>{hiddenCount}</span>
+        <span style={{ fontSize: '9px' }}>{hiddenCount}</span>
       )}
     </button>
   );

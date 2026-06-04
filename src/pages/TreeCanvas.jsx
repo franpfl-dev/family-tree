@@ -551,7 +551,9 @@ export default function TreeCanvas() {
       </div>
 
       {/* ── Bottom status bar ────────────────────────────────────────────────── */}
-      <div style={{
+      <div
+        className="status-bar"
+        style={{
         position: 'fixed', bottom: '1.25rem', left: '50%', transform: 'translateX(-50%)',
         background: 'rgba(255,248,240,0.9)', backdropFilter: 'blur(8px)',
         border: '1px solid var(--color-border)', borderRadius: '20px',
