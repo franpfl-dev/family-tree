@@ -436,7 +436,7 @@ function PersonPill({ person }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
       <div style={{
-        width: '28px', height: '28px', borderRadius: '50%',
+        width: '36px', height: '36px', borderRadius: '50%',
         background: person.gender === 'female'
           ? 'linear-gradient(135deg, #FFB6C1, #FF8FAB)'
           : 'linear-gradient(135deg, #87CEEB, #4682B4)',

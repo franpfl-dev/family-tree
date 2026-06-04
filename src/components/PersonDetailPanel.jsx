@@ -135,7 +135,7 @@ export default function PersonDetailPanel({ person, tree, onClose, onOpenCrossLi
               <div
                 onClick={() => photoRef.current?.click()}
                 style={{
-                  width: '68px', height: '68px', borderRadius: '50%',
+                  width: '84px', height: '84px', borderRadius: '50%',
                   background: form.profilePhoto
                     ? `url(${form.profilePhoto}) center/cover`
                     : form.gender === 'female'
@@ -206,7 +206,7 @@ export default function PersonDetailPanel({ person, tree, onClose, onOpenCrossLi
                 marginBottom: '0.75rem',
               }}>
                 <div style={{
-                  width: '36px', height: '36px', borderRadius: '50%',
+                  width: '48px', height: '48px', borderRadius: '50%',
                   background: spouse.gender === 'female' ? 'linear-gradient(135deg, #FFB6C1, #FF8FAB)' : 'linear-gradient(135deg, #87CEEB, #4682B4)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#fff', fontSize: '0.9rem', fontWeight: 700, flexShrink: 0,
@@ -344,7 +344,7 @@ function CrossLinkRow({ link, trees, onRemove, onNavigate }) {
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{
-        width: '32px', height: '32px', borderRadius: '50%',
+        width: '44px', height: '44px', borderRadius: '50%',
         background: person.gender === 'female' ? 'linear-gradient(135deg, #FFB6C1, #FF8FAB)' : 'linear-gradient(135deg, #87CEEB, #4682B4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#fff', fontSize: '0.82rem', fontWeight: 700, flexShrink: 0,

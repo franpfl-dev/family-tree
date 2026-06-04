@@ -128,8 +128,8 @@ export default function PersonNode({
     >
       {/* Avatar */}
       <div style={{
-        width: '48px',
-        height: '48px',
+        width: '56px',
+        height: '56px',
         borderRadius: '50%',
         background: person.profilePhoto
           ? `url(${person.profilePhoto}) center/cover`

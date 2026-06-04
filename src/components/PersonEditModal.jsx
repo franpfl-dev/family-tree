@@ -158,7 +158,7 @@ export default function PersonEditModal({ person, tree, onClose, onOpenAddSpouse
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <div style={{
-              width: '28px', height: '28px', borderRadius: '50%',
+              width: '36px', height: '36px', borderRadius: '50%',
               background: genderGradient,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0,
@@ -202,7 +202,7 @@ export default function PersonEditModal({ person, tree, onClose, onOpenAddSpouse
               <div
                 onClick={() => photoRef.current?.click()}
                 style={{
-                  width: '64px', height: '64px', borderRadius: '50%',
+                  width: '80px', height: '80px', borderRadius: '50%',
                   background: form.profilePhoto ? `url(${form.profilePhoto}) center/cover` : genderGradient,
                   border: '2px dashed var(--color-border)',
                   cursor: 'pointer', overflow: 'hidden',
@@ -315,7 +315,7 @@ export default function PersonEditModal({ person, tree, onClose, onOpenAddSpouse
               display: 'flex', alignItems: 'center', gap: '0.75rem',
             }}>
               <div style={{
-                width: '36px', height: '36px', borderRadius: '50%',
+                width: '48px', height: '48px', borderRadius: '50%',
                 background: spouse.gender === 'female' ? 'linear-gradient(135deg, #FFB6C1, #FF8FAB)' : 'linear-gradient(135deg, #87CEEB, #4682B4)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#fff', fontSize: '0.9rem', fontWeight: 700, flexShrink: 0, overflow: 'hidden',

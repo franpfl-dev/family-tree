@@ -333,7 +333,7 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
     >
       {/* Avatar */}
       <div style={{
-        width: '42px', height: '42px', borderRadius: '50%',
+        width: '56px', height: '56px', borderRadius: '50%',
         background: person.profilePhoto
           ? `url(${person.profilePhoto}) center/cover`
           : person.gender === 'female'

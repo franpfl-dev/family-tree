@@ -924,7 +924,7 @@ function MiniPersonCard({ name, gender, photo }) {
       flex: 1,
     }}>
       <div style={{
-        width: '48px', height: '48px', borderRadius: '50%',
+        width: '56px', height: '56px', borderRadius: '50%',
         background: photo
           ? `url(${photo}) center/cover`
           : gender === 'female'
