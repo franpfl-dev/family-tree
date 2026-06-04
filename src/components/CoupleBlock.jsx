@@ -2,6 +2,11 @@
  * CoupleBlock.jsx
  * Renders a joined husband+wife block with a 💍 center connector.
  * Husband on left, wife on right, heart/ring connector in the middle.
+ *
+ * Features:
+ *  - Anniversary badge above the block (when date is set)
+ *  - Deceased pill(s) below the block (when a spouse is deceased)
+ *  - Collapse/expand toggle button below the block (when there are children)
  */
 
 import React from 'react';
@@ -11,86 +16,219 @@ import { COUPLE_W, COUPLE_H, NODE_W } from '../hooks/useTreeLayout';
 
 const CONNECTOR_W = COUPLE_W - NODE_W * 2; // = 10px gap between nodes
 
-export default function CoupleBlock({ leftPerson, rightPerson, x, y, onClickPerson, onContextMenuPerson, onLongPressPerson, highlightedId }) {
+/** Format "YYYY-MM-DD" → "21 May 2002" */
+function formatBadgeDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return dateStr; }
+}
+
+export default function CoupleBlock({
+  leftPerson,
+  rightPerson,
+  x,
+  y,
+  onClickPerson,
+  onContextMenuPerson,
+  onLongPressPerson,
+  highlightedId,
+  hasChildren,
+  isCollapsed,
+  onToggleCollapse,
+  hiddenCount,
+}) {
   if (!leftPerson) return null;
 
   const anniversaryDate = leftPerson.anniversaryDate || rightPerson?.anniversaryDate;
+
+  // Deceased pills: show for each deceased spouse
+  const deceasedPills = [];
+  if (leftPerson.dod) {
+    deceasedPills.push({ name: leftPerson.name, dod: leftPerson.dod });
+  }
+  if (rightPerson?.dod) {
+    deceasedPills.push({ name: rightPerson.name, dod: rightPerson.dod });
+  }
+
+  // Badge height offset (so the couple block y position stays stable for SVG connectors)
+  const BADGE_H = anniversaryDate ? 26 : 0;
 
   return (
     <div
       style={{
         position: 'absolute',
         left: x,
-        top: y,
+        top: y - BADGE_H, // shift up to make room for badge without moving connectors
         width: COUPLE_W,
-        height: COUPLE_H,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 0,
         userSelect: 'none',
       }}
     >
-      {/* Left person (husband / main) */}
-      <MiniPersonCard
-        person={leftPerson}
-        isLeft
-        onClick={(e) => { e.stopPropagation(); onClickPerson(e, leftPerson); }}
-        onContextMenu={(e) => { onContextMenuPerson(e, leftPerson); }}
-        onLongPress={(e) => { onLongPressPerson(e, leftPerson); }}
-        isHighlighted={highlightedId === leftPerson.id}
-      />
+      {/* ── Anniversary badge (above couple block) ─────────────────────────── */}
+      {anniversaryDate && (
+        <div style={{
+          height: BADGE_H,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingBottom: '4px',
+        }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: 'linear-gradient(135deg, #FDF0E0, #FFF8F0)',
+            border: '1px solid rgba(212,169,106,0.55)',
+            borderRadius: '20px',
+            padding: '2px 10px',
+            fontSize: '11px',
+            fontFamily: 'var(--font-display)',
+            color: 'var(--color-primary)',
+            boxShadow: '0 1px 4px rgba(123,63,0,0.1)',
+            whiteSpace: 'nowrap',
+          }}>
+            💍 {formatBadgeDate(anniversaryDate)}
+          </div>
+        </div>
+      )}
 
-      {/* Center connector */}
+      {/* ── Couple block row ───────────────────────────────────────────────── */}
+      <div
+        style={{
+          width: COUPLE_W,
+          height: COUPLE_H,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0,
+        }}
+      >
+        {/* Left person (husband / main) */}
+        <MiniPersonCard
+          person={leftPerson}
+          isLeft
+          onClick={(e) => { e.stopPropagation(); onClickPerson(e, leftPerson); }}
+          onContextMenu={(e) => { onContextMenuPerson(e, leftPerson); }}
+          onLongPress={(e) => { onLongPressPerson(e, leftPerson); }}
+          isHighlighted={highlightedId === leftPerson.id}
+        />
+
+        {/* Center connector */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: CONNECTOR_W,
+          height: COUPLE_H,
+          gap: '0.25rem',
+          flexShrink: 0,
+          background: 'linear-gradient(180deg, rgba(253,246,236,0) 0%, rgba(253,240,224,0.6) 50%, rgba(253,246,236,0) 100%)',
+          zIndex: 1,
+        }}>
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #FDF0E0, #FFF8F0)',
+            border: '1.5px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(123,63,0,0.12)',
+          }}>
+            <Heart size={13} color="var(--color-accent)" fill="var(--color-accent)" />
+          </div>
+        </div>
+
+        {/* Right person (wife / spouse) */}
+        {rightPerson && (
+          <MiniPersonCard
+            person={rightPerson}
+            isLeft={false}
+            onClick={(e) => { e.stopPropagation(); onClickPerson(e, rightPerson); }}
+            onContextMenu={(e) => { onContextMenuPerson(e, rightPerson); }}
+            onLongPress={(e) => { onLongPressPerson(e, rightPerson); }}
+            isHighlighted={highlightedId === rightPerson.id}
+          />
+        )}
+      </div>
+
+      {/* ── Below-block row: deceased pills + collapse toggle ─────────────── */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        width: CONNECTOR_W,
-        height: COUPLE_H,
-        gap: '0.25rem',
-        flexShrink: 0,
-        background: 'linear-gradient(180deg, rgba(253,246,236,0) 0%, rgba(253,240,224,0.6) 50%, rgba(253,246,236,0) 100%)',
-        zIndex: 1,
+        gap: '4px',
+        marginTop: '4px',
       }}>
-        <div style={{
-          width: '28px', height: '28px', borderRadius: '50%',
-          background: 'linear-gradient(135deg, #FDF0E0, #FFF8F0)',
-          border: '1.5px solid var(--color-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 2px 8px rgba(123,63,0,0.12)',
-        }}>
-          <Heart size={13} color="var(--color-accent)" fill="var(--color-accent)" />
-        </div>
-        {anniversaryDate && (
-          <p style={{
-            fontSize: '0.58rem',
-            color: 'var(--color-muted)',
+        {/* Deceased pills */}
+        {deceasedPills.map((p) => (
+          <div key={p.name} style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: 'rgba(158,158,158,0.12)',
+            border: '1px solid rgba(158,158,158,0.3)',
+            borderRadius: '20px',
+            padding: '2px 8px',
+            fontSize: '10px',
             fontFamily: 'var(--font-body)',
-            textAlign: 'center',
-            lineHeight: 1.2,
-            maxWidth: CONNECTOR_W - 4,
+            color: 'var(--color-deceased)',
+            whiteSpace: 'nowrap',
           }}>
-            {formatDateShort(anniversaryDate)}
-          </p>
+            ✝ {p.name} · {formatDateShort(p.dod)}
+          </div>
+        ))}
+
+        {/* Collapse/expand toggle */}
+        {hasChildren && (
+          <CollapseBtn
+            isCollapsed={isCollapsed}
+            hiddenCount={hiddenCount}
+            onToggle={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
+          />
         )}
       </div>
-
-      {/* Right person (wife / spouse) */}
-      {rightPerson && (
-        <MiniPersonCard
-          person={rightPerson}
-          isLeft={false}
-          onClick={(e) => { e.stopPropagation(); onClickPerson(e, rightPerson); }}
-          onContextMenu={(e) => { onContextMenuPerson(e, rightPerson); }}
-          onLongPress={(e) => { onLongPressPerson(e, rightPerson); }}
-          isHighlighted={highlightedId === rightPerson.id}
-        />
-      )}
     </div>
   );
 }
 
+// ── Collapse toggle button ────────────────────────────────────────────────────
+function CollapseBtn({ isCollapsed, hiddenCount, onToggle }) {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <button
+      onClick={onToggle}
+      title={isCollapsed ? 'Expand branch' : 'Collapse branch'}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: '22px',
+        height: '22px',
+        borderRadius: '50%',
+        border: `1.5px solid ${hovered ? 'var(--color-border)' : 'rgba(160,133,108,0.4)'}`,
+        background: hovered ? 'rgba(212,169,106,0.18)' : 'rgba(255,248,240,0.9)',
+        color: 'var(--color-muted)',
+        fontSize: '9px',
+        fontWeight: 700,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 1px 4px rgba(123,63,0,0.1)',
+        transition: 'all 0.15s',
+        lineHeight: 1,
+        padding: 0,
+        gap: '1px',
+        minWidth: '22px',
+      }}
+    >
+      <span style={{ fontSize: '8px' }}>{isCollapsed ? '▶' : '▼'}</span>
+      {isCollapsed && hiddenCount > 0 && (
+        <span style={{ fontSize: '8px' }}>{hiddenCount}</span>
+      )}
+    </button>
+  );
+}
+
+// ── Mini person card ─────────────────────────────────────────────────────────
 function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, isHighlighted }) {
   const touchTimeout = React.useRef(null);
   const touchStartPos = React.useRef({ x: 0, y: 0 });
@@ -218,13 +356,6 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
       {person.dob && (
         <p style={{ fontSize: '0.63rem', color: 'var(--color-muted)', fontFamily: 'var(--font-body)' }}>
           b. {formatDateShort(person.dob)}
-        </p>
-      )}
-
-      {/* Deceased */}
-      {isDeceased && (
-        <p style={{ fontSize: '0.63rem', color: 'var(--color-deceased)', fontFamily: 'var(--font-body)' }}>
-          ✝ {formatDateShort(person.dod)}
         </p>
       )}
 

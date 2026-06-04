@@ -6,6 +6,8 @@
  * - Fully recursive — supports any tree depth (respects tree.maxHeight).
  * - Each node's column width = max(own block width, sum of children column widths + gaps).
  * - Levels are placed top-to-bottom with V_GAP between them.
+ * - Collapsed nodes (ids in collapsedIds set) are placed but their children are skipped,
+ *   so the canvas compacts naturally.
  *
  * Returns: Map<personId, { x, y, width, height, isCouple, isLeft?, spouseId?, coupleX? }>
  */
@@ -25,11 +27,12 @@ export const CANVAS_PAD_X = 80;
 /**
  * Build layout positions for a tree — supports unlimited depth.
  *
- * @param {object} tree       FamilyTree object  ({ id, rootPersonId, maxHeight, … })
- * @param {Array}  persons    flat persons list (all trees)
+ * @param {object} tree         FamilyTree object  ({ id, rootPersonId, maxHeight, … })
+ * @param {Array}  persons      flat persons list (all trees)
+ * @param {Set}    collapsedIds Set of personIds whose children should be hidden
  * @returns {{ positions: Map, canvasWidth: number, canvasHeight: number }}
  */
-export function buildLayout(tree, persons) {
+export function buildLayout(tree, persons, collapsedIds = new Set()) {
   if (!tree) return { positions: new Map(), canvasWidth: 800, canvasHeight: 600 };
 
   const treePersons = persons.filter((p) => p.treeId === tree.id);
@@ -37,6 +40,14 @@ export function buildLayout(tree, persons) {
 
   const rootPerson = treePersons.find((p) => p.id === tree.rootPersonId);
   if (!rootPerson) return { positions, canvasWidth: 800, canvasHeight: 600 };
+
+  // ── Helper: is this person (or their spouse) collapsed? ───────────────────
+  function isCollapsed(personId) {
+    if (collapsedIds.has(personId)) return true;
+    const person = treePersons.find((p) => p.id === personId);
+    if (person?.spouseId && collapsedIds.has(person.spouseId)) return true;
+    return false;
+  }
 
   // ── Helper: block width for a single person (NODE_W or COUPLE_W if spouse in same tree) ──
   function blockWidth(person) {
@@ -46,12 +57,16 @@ export function buildLayout(tree, persons) {
   }
 
   // ── Recursive: compute the column width needed for a subtree rooted at `personId` ──
-  // Column width = max(person's own block width, sum of children column widths + gaps)
+  // When a node is collapsed, its children contribute 0 width.
   function subtreeWidth(personId) {
     const person = treePersons.find((p) => p.id === personId);
     if (!person) return NODE_W;
 
     const ownW = blockWidth(person);
+
+    // If this node is collapsed, no child columns needed
+    if (isCollapsed(personId)) return ownW;
+
     const children = getChildrenOf(personId, treePersons);
     if (children.length === 0) return ownW;
 
@@ -117,11 +132,12 @@ export function buildLayout(tree, persons) {
       });
     }
 
-    // ── Place children ──────────────────────────────────────────────────────
+    // ── Place children — skip if this node is collapsed ────────────────────
+    if (isCollapsed(personId)) return;
+
     // A couple is treated as a single parenting unit. Children of either
     // partner (the main person OR their spouse) are rendered beneath the
-    // couple block. This makes "Add Child" from the main card and from the
-    // spouse card produce the same result: the child appears under the couple.
+    // couple block.
     const children = [
       ...getChildrenOf(personId, treePersons),
       ...(spouse ? getChildrenOf(spouse.id, treePersons) : []),

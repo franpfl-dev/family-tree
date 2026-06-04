@@ -123,11 +123,12 @@ export default function PersonEditModal({ person, tree, onClose, onOpenAddSpouse
         }}
       />
 
-      {/* Modal */}
+      {/* Modal — full-screen on mobile, centered card on desktop */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Edit Person"
+        className="modal-fullscreen-mobile"
         style={{
           position: 'fixed',
           top: '50%', left: '50%',

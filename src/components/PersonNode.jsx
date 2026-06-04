@@ -1,15 +1,27 @@
 /**
  * PersonNode.jsx
  * Single person card node rendered on the tree canvas.
- * Handles: photo/icon, name, DOB, deceased marker, placeholder styling.
- * Clicking opens the context menu.
+ * Handles: photo/icon, name, DOB, deceased marker, placeholder styling,
+ *          and collapse/expand toggle button for nodes with children.
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { formatDateShort } from '../utils/familyUtils';
 import { NODE_W, NODE_H } from '../hooks/useTreeLayout';
 
-export default function PersonNode({ person, x, y, onClick, onContextMenu, onLongPress, isHighlighted }) {
+export default function PersonNode({
+  person,
+  x,
+  y,
+  onClick,
+  onContextMenu,
+  onLongPress,
+  isHighlighted,
+  hasChildren,
+  isCollapsed,
+  onToggleCollapse,
+  hiddenCount,
+}) {
   const touchTimeout = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
   const hasTriggeredLongPress = useRef(false);
@@ -145,10 +157,7 @@ export default function PersonNode({ person, x, y, onClick, onContextMenu, onLon
       </div>
 
       {/* Name */}
-      <div style={{
-        textAlign: 'center',
-        lineHeight: 1.2,
-      }}>
+      <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
         {isPlaceholder ? (
           <p style={{
             fontFamily: 'var(--font-body)',
@@ -216,6 +225,58 @@ export default function PersonNode({ person, x, y, onClick, onContextMenu, onLon
           🔗 {person.crossLinks.length}
         </div>
       )}
+
+      {/* Collapse/expand toggle button (bottom-center, outside click area) */}
+      {hasChildren && !isPlaceholder && (
+        <CollapseBtn
+          isCollapsed={isCollapsed}
+          hiddenCount={hiddenCount}
+          onToggle={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Collapse toggle button ────────────────────────────────────────────────────
+function CollapseBtn({ isCollapsed, hiddenCount, onToggle }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onToggle}
+      title={isCollapsed ? 'Expand branch' : 'Collapse branch'}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'absolute',
+        bottom: '-12px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '22px',
+        height: '22px',
+        borderRadius: '50%',
+        border: `1.5px solid ${hovered ? 'var(--color-border)' : 'rgba(160,133,108,0.4)'}`,
+        background: hovered ? 'rgba(212,169,106,0.18)' : 'rgba(255,248,240,0.9)',
+        color: 'var(--color-muted)',
+        fontSize: '9px',
+        fontWeight: 700,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 1px 4px rgba(123,63,0,0.1)',
+        transition: 'all 0.15s',
+        lineHeight: 1,
+        padding: 0,
+        gap: '1px',
+        zIndex: 10,
+        minWidth: '22px',
+      }}
+    >
+      <span style={{ fontSize: '8px' }}>{isCollapsed ? '▶' : '▼'}</span>
+      {isCollapsed && hiddenCount > 0 && (
+        <span style={{ fontSize: '8px' }}>{hiddenCount}</span>
+      )}
+    </button>
   );
 }

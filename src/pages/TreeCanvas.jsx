@@ -9,13 +9,18 @@
  *   - Pinch (two-finger) → zoom (scale 0.3 – 2.0)
  *   - Bottom-right zoom buttons: zoom in, zoom out, fit-to-screen
  *   - On load: auto-fits the entire tree into the viewport
+ *
+ * Collapse/expand:
+ *   - Every node with children has a toggle button (▼/▶)
+ *   - Collapsed branches are excluded from layout — canvas compacts
+ *   - collapsedIds is local state, resets on page reload
  */
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Camera, Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { buildLayout } from '../hooks/useTreeLayout';
+import { buildLayout, CANVAS_PAD_X, CANVAS_PAD_TOP } from '../hooks/useTreeLayout';
 import { getChildrenOf } from '../utils/familyUtils';
 import { exportAsPng, useExportJson } from '../hooks/useExport';
 import BreadcrumbBar from '../components/BreadcrumbBar';
@@ -51,6 +56,21 @@ export default function TreeCanvas() {
     if (treeId) setActiveTree(treeId);
   }, [treeId, setActiveTree]);
 
+  // ── Collapse state — local only, resets on page reload ───────────────────────
+  const [collapsedIds, setCollapsedIds] = useState(new Set());
+
+  const toggleCollapse = useCallback((personId) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(personId)) {
+        next.delete(personId);
+      } else {
+        next.add(personId);
+      }
+      return next;
+    });
+  }, []);
+
   // ── Zoom + Pan state ──────────────────────────────────────────────────────────
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -58,31 +78,24 @@ export default function TreeCanvas() {
   const dragStart = useRef(null);
   const panAtDragStart = useRef({ x: 0, y: 0 });
 
-  // ── Layout ────────────────────────────────────────────────────────────────────
+  // ── Layout (collapse-aware) ───────────────────────────────────────────────────
   const { positions, canvasWidth, canvasHeight } = useMemo(
-    () => buildLayout(tree, persons),
-    [tree, persons]
+    () => buildLayout(tree, persons, collapsedIds),
+    [tree, persons, collapsedIds]
   );
 
   // ── Fit to screen helper ──────────────────────────────────────────────────────
   const fitToScreen = useCallback(() => {
     const vw = window.innerWidth;
     const vh = window.innerHeight - HEADER_H;
-
-    const CANVAS_PAD_X = 80;
-    const CANVAS_PAD_TOP = 60;
     const scaleX = vw / (canvasWidth + CANVAS_PAD_X * 2);
     const scaleY = vh / (canvasHeight + CANVAS_PAD_TOP * 2);
     const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), MIN_SCALE), MAX_SCALE);
 
-    // Center the scaled canvas in the viewport
     const scaledW = canvasWidth * newScale;
     const scaledH = canvasHeight * newScale;
-    const newPanX = (vw - scaledW) / 2;
-    const newPanY = (vh - scaledH) / 2;
-
     setScale(newScale);
-    setPan({ x: newPanX, y: newPanY });
+    setPan({ x: (vw - scaledW) / 2, y: (vh - scaledH) / 2 });
   }, [canvasWidth, canvasHeight]);
 
   // ── Fit to screen on first load / tree change ─────────────────────────────────
@@ -128,7 +141,6 @@ export default function TreeCanvas() {
     const delta = -e.deltaY * 0.001;
     setScale((prev) => {
       const next = Math.min(Math.max(prev + delta, MIN_SCALE), MAX_SCALE);
-      // Zoom toward cursor position
       const rect = e.currentTarget.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
@@ -160,13 +172,11 @@ export default function TreeCanvas() {
       setTooltipPerson(null);
     }
     if (e.touches.length === 1) {
-      // Single finger — pan
       const t = e.touches[0];
       touchStart.current = { x: t.clientX, y: t.clientY };
       panAtDragStart.current = pan;
       lastPinchDist.current = null;
     } else if (e.touches.length === 2) {
-      // Two fingers — pinch
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       lastPinchDist.current = getTouchDist(t1, t2);
@@ -176,28 +186,24 @@ export default function TreeCanvas() {
         x: (t1.clientX + t2.clientX) / 2,
         y: (t1.clientY + t2.clientY) / 2,
       };
-      touchStart.current = null; // disable single-finger pan during pinch
+      touchStart.current = null;
     }
   }, [pan, scale]);
 
   const handleTouchMove = useCallback((e) => {
-    e.preventDefault(); // prevent page scroll during pan/pinch
+    e.preventDefault();
     if (e.touches.length === 1 && touchStart.current) {
-      // Single finger pan
       const t = e.touches[0];
       setPan({
         x: panAtDragStart.current.x + (t.clientX - touchStart.current.x),
         y: panAtDragStart.current.y + (t.clientY - touchStart.current.y),
       });
     } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
-      // Two-finger pinch zoom
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const newDist = getTouchDist(t1, t2);
       const ratio = newDist / lastPinchDist.current;
       const newScale = Math.min(Math.max(scaleAtPinchStart.current * ratio, MIN_SCALE), MAX_SCALE);
-
-      // Zoom anchored to pinch midpoint
       const mx = pinchMidpointStart.current.x;
       const my = pinchMidpointStart.current.y;
       const scaleRatio = newScale / scaleAtPinchStart.current;
@@ -257,7 +263,7 @@ export default function TreeCanvas() {
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
-  // ── SVG connector pairs ───────────────────────────────────────────────────────
+  // ── SVG connector pairs — only between visible (placed) nodes ─────────────────
   const parentChildPairs = useMemo(() => {
     if (!tree) return [];
     const pairs = [];
@@ -265,6 +271,7 @@ export default function TreeCanvas() {
     for (const person of treePersons) {
       const children = getChildrenOf(person.id, treePersons);
       for (const child of children) {
+        // Only draw connector if child was placed (not collapsed away)
         if (positions.has(person.id) && positions.has(child.id)) {
           pairs.push({ parentId: person.id, childId: child.id });
         }
@@ -272,6 +279,20 @@ export default function TreeCanvas() {
     }
     return pairs;
   }, [tree, persons, positions]);
+
+  // ── Helper: count all descendants (for collapse count badge) ─────────────────
+  const countDescendants = useCallback((personId) => {
+    const treePersons = persons.filter((p) => p.treeId === treeId);
+    function count(id) {
+      const children = getChildrenOf(id, treePersons);
+      return children.reduce((sum, c) => sum + 1 + count(c.id), 0);
+    }
+    // Also count children of spouse (couple block)
+    const person = treePersons.find((p) => p.id === personId);
+    const spouseId = person?.spouseId;
+    const spouseChildren = spouseId ? getChildrenOf(spouseId, treePersons) : [];
+    return count(personId) + spouseChildren.reduce((sum, c) => sum + 1 + count(c.id), 0);
+  }, [persons, treeId]);
 
   // ── Node left click (Tooltip) ──────────────────────────────────────────────────
   const handleNodeLeftClick = useCallback((e, person) => {
@@ -369,7 +390,6 @@ export default function TreeCanvas() {
   const zoomIn = useCallback(() => {
     setScale((prev) => {
       const next = Math.min(prev + 0.1, MAX_SCALE);
-      // Keep center of viewport anchored
       const cx = window.innerWidth / 2;
       const cy = (window.innerHeight - HEADER_H) / 2;
       const ratio = next / prev;
@@ -411,6 +431,7 @@ export default function TreeCanvas() {
   }
 
   // ── Render nodes ───────────────────────────────────────────────────────────────
+  const treePersons = persons.filter((p) => p.treeId === treeId);
   const renderedNodes = [];
   const renderedIds = new Set();
 
@@ -423,6 +444,15 @@ export default function TreeCanvas() {
       const spousePerson = persons.find((p) => p.id === pos.spouseId);
       renderedIds.add(personId);
       if (spousePerson) renderedIds.add(spousePerson.id);
+
+      // Determine children for collapse toggle
+      const coupleChildren = [
+        ...getChildrenOf(personId, treePersons),
+        ...(spousePerson ? getChildrenOf(spousePerson.id, treePersons) : []),
+      ];
+      const isCollapsed = collapsedIds.has(personId) || (spousePerson && collapsedIds.has(spousePerson.id));
+      const hiddenCount = isCollapsed ? countDescendants(personId) : 0;
+
       renderedNodes.push(
         <CoupleBlock
           key={`couple-${personId}`}
@@ -434,10 +464,19 @@ export default function TreeCanvas() {
           onContextMenuPerson={handleNodeRightClick}
           onLongPressPerson={handleNodeLongPress}
           highlightedId={highlightedId}
+          hasChildren={coupleChildren.length > 0}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={() => toggleCollapse(personId)}
+          hiddenCount={hiddenCount}
         />
       );
     } else if (!pos.isCouple) {
       renderedIds.add(personId);
+
+      const nodeChildren = getChildrenOf(personId, treePersons);
+      const isCollapsed = collapsedIds.has(personId);
+      const hiddenCount = isCollapsed ? countDescendants(personId) : 0;
+
       renderedNodes.push(
         <PersonNode
           key={personId}
@@ -448,6 +487,10 @@ export default function TreeCanvas() {
           onContextMenu={handleNodeRightClick}
           onLongPress={handleNodeLongPress}
           isHighlighted={highlightedId === personId}
+          hasChildren={nodeChildren.length > 0}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={() => toggleCollapse(personId)}
+          hiddenCount={hiddenCount}
         />
       );
     }
@@ -467,7 +510,7 @@ export default function TreeCanvas() {
           position: 'absolute', inset: 0, paddingTop: `${HEADER_H}px`,
           cursor: isDragging ? 'grabbing' : 'grab',
           overflow: 'hidden',
-          touchAction: 'none', // prevent browser default scroll/zoom — we handle it ourselves
+          touchAction: 'none',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -518,44 +561,37 @@ export default function TreeCanvas() {
         display: 'flex', alignItems: 'center', gap: '0.5rem',
         pointerEvents: 'none',
         maxWidth: 'calc(100vw - 10rem)',
+        zIndex: 100,
       }}>
         <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{tree.name}</span>
         <span>·</span>
         {treePersonCount} members
         <span>·</span>
         Depth: {tree.maxHeight}
-        <span style={{ opacity: 0.55, display: window.innerWidth < 640 ? 'none' : 'inline' }}>· Right-click nodes · Press / to search</span>
+        <span className="status-bar-hint" style={{ opacity: 0.55 }}>· Right-click nodes · Press / to search</span>
         <span style={{ opacity: 0.7 }}>· {Math.round(scale * 100)}%</span>
       </div>
 
-      {/* ── Zoom + Toolbar (right side) ───────────────────────────────────────── */}
-      <div style={{
-        position: 'fixed', bottom: '1.25rem', right: '1.25rem',
-        display: 'flex', flexDirection: 'column', gap: '0.5rem',
-        alignItems: 'center',
-      }}>
-        {/* Zoom In */}
+      {/* ── Zoom + Toolbar (right side, safe-area aware) ──────────────────────── */}
+      <div className="zoom-toolbar">
         <IconToolBtn
           id="btn-zoom-in"
           title="Zoom in"
           onClick={zoomIn}
           label={<ZoomIn size={16} />}
         />
-        {/* Zoom Out */}
         <IconToolBtn
           id="btn-zoom-out"
           title="Zoom out"
           onClick={zoomOut}
           label={<ZoomOut size={16} />}
         />
-        {/* Fit to Screen */}
         <IconToolBtn
           id="btn-fit-screen"
           title="Fit to screen"
           onClick={fitToScreen}
           label={<Maximize2 size={16} />}
         />
-        {/* Export PNG */}
         <IconToolBtn
           id="btn-export-png"
           title="Export as PNG"
@@ -563,7 +599,6 @@ export default function TreeCanvas() {
           disabled={isExporting}
           label={isExporting ? '…' : <Camera size={16} />}
         />
-        {/* Export JSON */}
         <IconToolBtn
           id="btn-export-json"
           title="Export data as JSON"
@@ -572,7 +607,7 @@ export default function TreeCanvas() {
         />
       </div>
 
-      {/* ── Minimap (5C) ─────────────────────────────────────────────────────── */}
+      {/* ── Minimap ─────────────────────────────────────────────────────────── */}
       <Minimap
         positions={positions}
         canvasWidth={canvasWidth}
@@ -606,7 +641,7 @@ export default function TreeCanvas() {
         />
       )}
 
-      {/* ── Global Search (5D) ───────────────────────────────────────────────── */}
+      {/* ── Global Search ───────────────────────────────────────────────────── */}
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
 
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
@@ -669,7 +704,7 @@ function IconToolBtn({ id, title, onClick, label, disabled }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        width: '40px', height: '40px', borderRadius: '50%',
+        width: '44px', height: '44px', borderRadius: '50%',
         border: '1px solid var(--color-border)',
         background: hovered ? 'var(--color-surface)' : 'rgba(255,248,240,0.92)',
         backdropFilter: 'blur(8px)',
@@ -678,6 +713,7 @@ function IconToolBtn({ id, title, onClick, label, disabled }) {
         boxShadow: 'var(--shadow-node)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.2s',
+        flexShrink: 0,
       }}
     >
       {label}
