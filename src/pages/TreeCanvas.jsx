@@ -18,11 +18,10 @@
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { buildLayout, CANVAS_PAD_X, CANVAS_PAD_TOP } from '../hooks/useTreeLayout';
 import { getChildrenOf } from '../utils/familyUtils';
-import { exportAsPng, useExportJson } from '../hooks/useExport';
 import BreadcrumbBar from '../components/BreadcrumbBar';
 import PersonNode from '../components/PersonNode';
 import CoupleBlock from '../components/CoupleBlock';
@@ -598,23 +597,10 @@ export default function TreeCanvas() {
           label={<Maximize2 size={16} />}
         />
         <IconToolBtn
-          id="btn-export-png"
-          title="Export as PNG"
-          onClick={handleExportPng}
-          disabled={isExporting}
-          label={isExporting ? '…' : <Camera size={16} />}
-        />
-        <IconToolBtn
           id="btn-calendar"
           title="Export to Calendar"
           onClick={() => setCalendarModalOpen(true)}
           label={<span style={{ fontSize: '15px' }}>📅</span>}
-        />
-        <IconToolBtn
-          id="btn-export-json"
-          title="Export data as JSON"
-          onClick={exportJson}
-          label={<Download size={16} />}
         />
       </div>
 
