@@ -219,28 +219,6 @@ export default function HomeScreen() {
               <Upload size={14} /> <span className="home-btn-label">Import</span>
               <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
             </label>
-
-            <button
-              id="btn-new-tree"
-              onClick={() => navigate('/new-tree')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.625rem 1.25rem',
-                borderRadius: '10px',
-                border: 'none',
-                background: 'linear-gradient(135deg, var(--color-primary), #A0522D)',
-                color: '#FFF8F0',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                boxShadow: '0 2px 10px rgba(123,63,0,0.35)',
-                transition: 'all 0.2s',
-                fontFamily: 'var(--font-body)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(123,63,0,0.45)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(123,63,0,0.35)'; }}
-            >
-              <Plus size={18} /> New Family Tree
-            </button>
           </div>
         </div>
       </header>
