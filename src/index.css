@@ -27,20 +27,20 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Prevent the page itself from ever scrolling — the tree canvas manages
-   its own pan/zoom internally. Without this, a failed preventDefault()
-   would scroll the body and make the fixed canvas go blank. */
+/* Prevent horizontal overflow on all pages; vertical scroll is allowed
+   on pages like Home/NewTree that need it. The TreeCanvas page blocks
+   its own scroll internally via overflow:hidden on its wrapper div. */
 html {
   height: 100%;
   width: 100%;
-  overflow: hidden; /* lock page scroll on all devices */
+  overflow-x: hidden;
 }
 
 body {
   height: 100%;
   width: 100%;
   max-width: 100vw;
-  overflow: hidden; /* belt-and-suspenders: block both axes */
+  overflow-x: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
@@ -48,18 +48,17 @@ body {
 }
 
 #root {
-  /* Desktop: classic 100vh */
-  height: 100vh;
+  min-height: 100vh;
+  /* Use dvh on mobile so it matches the visible viewport */
+  min-height: 100dvh;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
-/* Mobile: use dynamic viewport height so the container doesn't resize
-   (and go blank) when the browser address bar appears / disappears. */
-@media (max-width: 768px) {
-  #root {
-    height: 100dvh;
-  }
+/* TreeCanvas-specific: lock all scroll when on the canvas route.
+   Applied via a class added to body by TreeCanvas on mount/unmount. */
+body.tree-canvas-active {
+  overflow: hidden;
 }
 
 h1, h2, h3, h4 {
@@ -87,6 +86,11 @@ input, select, textarea {
 @media (max-width: 640px) {
   /* Stack status bar text tighter */
   .status-bar-hint {
+    display: none !important;
+  }
+
+  /* ── Home page header: hide button labels, icon-only on mobile ── */
+  .home-btn-label {
     display: none !important;
   }
 

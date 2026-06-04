@@ -90,11 +90,15 @@ export default function HomeScreen() {
         <div style={{
           maxWidth: '1200px',
           margin: '0 auto',
-          padding: '0 2rem',
-          height: '72px',
+          padding: '0 1rem',
+          minHeight: '64px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          paddingTop: '0.5rem',
+          paddingBottom: '0.5rem',
         }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -125,7 +129,7 @@ export default function HomeScreen() {
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             {trees.length > 0 && (
               <>
                 {/* Calendar Export */}
@@ -147,7 +151,7 @@ export default function HomeScreen() {
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
                 >
-                  <Calendar size={14} /> <span className="breadcrumb-label">Calendar</span>
+                  <Calendar size={14} /> <span className="home-btn-label">Calendar</span>
                 </button>
 
                 {/* Notifications */}
@@ -169,7 +173,7 @@ export default function HomeScreen() {
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
                 >
-                  <Bell size={14} /> <span className="breadcrumb-label">Notifications</span>
+                  <Bell size={14} /> <span className="home-btn-label">Alerts</span>
                 </button>
 
                 {/* Export JSON */}
@@ -190,7 +194,7 @@ export default function HomeScreen() {
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
                 >
-                  <Download size={14} /> <span className="breadcrumb-label">Export</span>
+                  <Download size={14} /> <span className="home-btn-label">Export</span>
                 </button>
               </>
             )}
@@ -212,7 +216,7 @@ export default function HomeScreen() {
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
             >
-              <Upload size={14} /> Import
+              <Upload size={14} /> <span className="home-btn-label">Import</span>
               <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
             </label>
 
@@ -254,7 +258,7 @@ export default function HomeScreen() {
       )}
 
       {/* ── Main Content ───────────────────────────────────────────────── */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         {trees.length === 0 ? (
           <EmptyState onCreateNew={() => navigate('/new-tree')} />
         ) : (
@@ -273,8 +277,8 @@ export default function HomeScreen() {
 
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: '1.5rem',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
+              gap: '1.25rem',
             }}>
               {trees.map((tree) => (
                 <FamilyTreeCard

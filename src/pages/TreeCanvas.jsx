@@ -55,6 +55,14 @@ export default function TreeCanvas() {
     if (treeId) setActiveTree(treeId);
   }, [treeId, setActiveTree]);
 
+  // Lock body scroll while tree canvas is mounted (prevents page scroll
+  // interfering with canvas pan/zoom). Restored on unmount.
+  useEffect(() => {
+    document.body.classList.add('tree-canvas-active');
+    return () => document.body.classList.remove('tree-canvas-active');
+  }, []);
+
+
   // ── Collapse state — local only, resets on page reload ───────────────────────
   const [collapsedIds, setCollapsedIds] = useState(new Set());
 
