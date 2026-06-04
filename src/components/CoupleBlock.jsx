@@ -182,7 +182,7 @@ export default function CoupleBlock({
           <CollapseBtn
             isCollapsed={isCollapsed}
             hiddenCount={hiddenCount}
-            onToggle={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
+            onToggle={onToggleCollapse}
           />
         )}
       </div>
@@ -191,11 +191,22 @@ export default function CoupleBlock({
 }
 
 // ── Collapse toggle button ────────────────────────────────────────────────────
+// Fully owns its own events so the canvas never intercepts mousedown/touchstart.
 function CollapseBtn({ isCollapsed, hiddenCount, onToggle }) {
   const [hovered, setHovered] = React.useState(false);
+
+  function fire(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    onToggle?.();
+  }
+
   return (
     <button
-      onClick={onToggle}
+      onClick={fire}
+      onMouseDown={(e) => e.stopPropagation()} // prevent canvas drag-start
+      onTouchStart={(e) => e.stopPropagation()} // prevent canvas pan-start
+      onTouchEnd={fire}                         // direct toggle on mobile tap
       title={isCollapsed ? 'Expand branch' : 'Collapse branch'}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -213,11 +224,12 @@ function CollapseBtn({ isCollapsed, hiddenCount, onToggle }) {
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: '0 2px 6px rgba(123,63,0,0.12)',
-        transition: 'all 0.15s',
+        transition: 'background 0.15s, border-color 0.15s',
         lineHeight: 1,
         padding: 0,
         gap: '1px',
         minWidth: '28px',
+        pointerEvents: 'all',
       }}
     >
       <span style={{ fontSize: '10px' }}>{isCollapsed ? '▶' : '▼'}</span>
