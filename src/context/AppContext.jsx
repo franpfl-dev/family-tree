@@ -44,6 +44,11 @@ export function AppProvider({ children }) {
     return init;
   });
 
+  // ── State mirror ref — always holds the latest state so stale closures can read it ──
+  // Must be declared AFTER useReducer so that `state` is in scope.
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+
   // ── Initial load: fetch from API, fall back to cache ─────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -197,11 +202,11 @@ export function AppProvider({ children }) {
         }
         await api.updatePerson(personId, cleanUpdates);
 
-        // If anniversaryDate is being changed, sync it to the spouse on the backend too
+        // If anniversaryDate is being changed, sync it to the spouse on the backend too.
+        // Use stateRef (not localStorage) to reliably get the current spouseId —
+        // localStorage write via useEffect may not have run yet at this point.
         if ('anniversaryDate' in cleanUpdates) {
-          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-          const allPersons = saved.persons || [];
-          const person = allPersons.find((p) => p.id === personId);
+          const person = stateRef.current.persons.find((p) => p.id === personId);
           const spouseId = person?.spouseId;
           if (spouseId) {
             await api.updatePerson(spouseId, { anniversaryDate: cleanUpdates.anniversaryDate });
