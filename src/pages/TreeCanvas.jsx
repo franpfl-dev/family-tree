@@ -77,6 +77,7 @@ export default function TreeCanvas() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef(null);
   const panAtDragStart = useRef({ x: 0, y: 0 });
+  const canvasWrapRef = useRef(null); // DOM ref for non-passive listeners
 
   // ── Layout (collapse-aware) ───────────────────────────────────────────────────
   const { positions, canvasWidth, canvasHeight } = useMemo(
@@ -135,13 +136,19 @@ export default function TreeCanvas() {
     if (e.currentTarget) e.currentTarget.style.cursor = 'grab';
   }, []);
 
-  // ── Mouse wheel zoom ──────────────────────────────────────────────────────────
-  const handleWheel = useCallback((e) => {
+  // ── Mouse wheel zoom (attached as non-passive via useEffect) ─────────────────
+  // React 17+ attaches onWheel passively at the document root, so
+  // e.preventDefault() in the synthetic handler silently fails — the browser
+  // still scrolls the page and the fixed canvas goes blank.  We attach
+  // directly to the DOM element with { passive: false } to actually suppress it.
+  const handleWheelRef = useRef(null);
+  handleWheelRef.current = (e) => {
     e.preventDefault();
     const delta = -e.deltaY * 0.001;
     setScale((prev) => {
       const next = Math.min(Math.max(prev + delta, MIN_SCALE), MAX_SCALE);
-      const rect = e.currentTarget.getBoundingClientRect();
+      const rect = canvasWrapRef.current?.getBoundingClientRect();
+      if (!rect) return next;
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       const ratio = next / prev;
@@ -151,9 +158,11 @@ export default function TreeCanvas() {
       }));
       return next;
     });
-  }, []);
+  };
 
   // ── Touch: single-finger pan + two-finger pinch-zoom ──────────────────────────
+  // Touch handlers are also attached as non-passive via useEffect (see below)
+  // so that e.preventDefault() actually suppresses native page scroll while panning.
   const touchStart = useRef(null);
   const lastPinchDist = useRef(null);
   const scaleAtPinchStart = useRef(1);
@@ -166,32 +175,41 @@ export default function TreeCanvas() {
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  const handleTouchStart = useCallback((e) => {
-    if (e.target === e.currentTarget || !e.target.closest('[data-node]')) {
+  // Keep latest pan/scale in refs so non-passive touch handlers can read them
+  // without stale-closure issues.
+  const panRef = useRef(pan);
+  const scaleRef = useRef(scale);
+  useEffect(() => { panRef.current = pan; }, [pan]);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+
+  const handleTouchStartRef = useRef(null);
+  handleTouchStartRef.current = (e) => {
+    if (e.target === canvasWrapRef.current || !e.target.closest('[data-node]')) {
       setContextMenu(null);
       setTooltipPerson(null);
     }
     if (e.touches.length === 1) {
       const t = e.touches[0];
       touchStart.current = { x: t.clientX, y: t.clientY };
-      panAtDragStart.current = pan;
+      panAtDragStart.current = panRef.current;
       lastPinchDist.current = null;
     } else if (e.touches.length === 2) {
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       lastPinchDist.current = getTouchDist(t1, t2);
-      scaleAtPinchStart.current = scale;
-      panAtPinchStart.current = pan;
+      scaleAtPinchStart.current = scaleRef.current;
+      panAtPinchStart.current = panRef.current;
       pinchMidpointStart.current = {
         x: (t1.clientX + t2.clientX) / 2,
         y: (t1.clientY + t2.clientY) / 2,
       };
       touchStart.current = null;
     }
-  }, [pan, scale]);
+  };
 
-  const handleTouchMove = useCallback((e) => {
-    e.preventDefault();
+  const handleTouchMoveRef = useRef(null);
+  handleTouchMoveRef.current = (e) => {
+    e.preventDefault(); // works because listener is non-passive
     if (e.touches.length === 1 && touchStart.current) {
       const t = e.touches[0];
       setPan({
@@ -213,12 +231,37 @@ export default function TreeCanvas() {
         y: my - scaleRatio * (my - panAtPinchStart.current.y),
       });
     }
-  }, []);
+  };
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEndRef = useRef(null);
+  handleTouchEndRef.current = () => {
     touchStart.current = null;
     lastPinchDist.current = null;
-  }, []);
+  };
+
+  // ── Attach non-passive wheel + touch listeners directly to DOM element ────────
+  // This is the only way to call e.preventDefault() reliably in React 17+.
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+
+    const onWheel = (e) => handleWheelRef.current(e);
+    const onTouchStart = (e) => handleTouchStartRef.current(e);
+    const onTouchMove = (e) => handleTouchMoveRef.current(e);
+    const onTouchEnd = () => handleTouchEndRef.current();
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, []); // runs once — handlers read fresh values via refs
 
   // ── Highlight (cross-link navigation) ────────────────────────────────────────
   const [highlightedId, setHighlightedId] = useState(null);
@@ -502,26 +545,37 @@ export default function TreeCanvas() {
 
   // ── Render ─────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--color-bg)', position: 'relative' }}>
+    <div style={{
+      width: '100vw',
+      // Use 100dvh (dynamic viewport height) on mobile so the canvas doesn't
+      // resize / go blank when the browser address bar appears or disappears.
+      // Fall back to 100vh on browsers that don't support dvh.
+      height: '100dvh',
+      overflow: 'hidden',
+      background: 'var(--color-bg)',
+      position: 'relative',
+    }}>
       {/* Breadcrumb with search */}
       <BreadcrumbBar tree={tree} onSearchClick={() => setSearchOpen(true)} />
 
-      {/* Canvas area — receives all pointer/touch events */}
+      {/* Canvas area — non-passive wheel/touch attached via useEffect below */}
       <div
+        ref={canvasWrapRef}
         style={{
           position: 'absolute', inset: 0, paddingTop: `${HEADER_H}px`,
           cursor: isDragging ? 'grabbing' : 'grab',
           overflow: 'hidden',
+          // touchAction 'none' tells browser we'll handle all touch ourselves;
+          // combined with non-passive touchmove listener this prevents scroll.
           touchAction: 'none',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        // onWheel / onTouchStart / onTouchMove / onTouchEnd are intentionally
+        // NOT used here — they are attached as non-passive DOM listeners in
+        // the useEffect above so e.preventDefault() actually suppresses scroll.
       >
         {/* Dot grid background */}
         <div style={{
