@@ -47,7 +47,6 @@ export default function TreeCanvas() {
   const navigate = useNavigate();
   const { state, setActiveTree, addTreeLevel, deletePerson, deleteTree } = useAppContext();
   const { trees, persons } = state;
-  const exportJson = useExportJson();
 
   const tree = trees.find((t) => t.id === treeId);
   const canvasRef = useRef(null); // for PNG export
@@ -423,12 +422,22 @@ export default function TreeCanvas() {
   // ── Minimap pan ────────────────────────────────────────────────────────────────
   const handleMinimapPan = useCallback((x, y) => setPan({ x, y }), []);
 
-  // ── PNG export ─────────────────────────────────────────────────────────────────
+  // ── PNG export ──────────────────────────────────────────────────────────
   async function handleExportPng() {
     if (!canvasRef.current) return;
     setIsExporting(true);
-    await exportAsPng(canvasRef.current, tree?.name || 'family-tree');
-    setIsExporting(false);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(canvasRef.current, { backgroundColor: null, scale: 1 });
+      const link = document.createElement('a');
+      link.download = `${tree?.name || 'family-tree'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.warn('PNG export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   // ── Zoom button helpers ────────────────────────────────────────────────────────
