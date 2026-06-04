@@ -37,6 +37,7 @@ import CrossLinkModal from '../components/CrossLinkModal';
 import GlobalSearch from '../components/GlobalSearch';
 import Minimap from '../components/Minimap';
 import NodeTooltip from '../components/NodeTooltip';
+import CalendarExportModal from '../components/CalendarExportModal';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.0;
@@ -250,6 +251,8 @@ export default function TreeCanvas() {
   const [crossLinkPerson, setCrossLinkPerson] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarExportPerson, setCalendarExportPerson] = useState(null);
 
   // Keyboard shortcut: / or Ctrl+K for search
   useEffect(() => {
@@ -602,6 +605,12 @@ export default function TreeCanvas() {
           label={isExporting ? '…' : <Camera size={16} />}
         />
         <IconToolBtn
+          id="btn-calendar"
+          title="Export to Calendar"
+          onClick={() => setCalendarModalOpen(true)}
+          label={<span style={{ fontSize: '15px' }}>📅</span>}
+        />
+        <IconToolBtn
           id="btn-export-json"
           title="Export data as JSON"
           onClick={exportJson}
@@ -631,6 +640,7 @@ export default function TreeCanvas() {
           onAddSpouse={handleAddSpouse}
           onAddCrossLink={handleAddCrossLink}
           onAddLevelBelow={handleAddLevelBelow}
+          onExportDates={(p) => setCalendarExportPerson(p)}
         />
       )}
 
@@ -688,6 +698,22 @@ export default function TreeCanvas() {
         <CrossLinkModal
           person={crossLinkPerson}
           onClose={() => setCrossLinkPerson(null)}
+        />
+      )}
+      {/* ── Calendar Export Modal ──────────────────────────────────────── */}
+      {calendarModalOpen && (
+        <CalendarExportModal
+          onClose={() => setCalendarModalOpen(false)}
+          defaultTab="By Tree"
+          defaultTreeId={treeId}
+        />
+      )}
+
+      {/* Per-person calendar export from context menu */}
+      {calendarExportPerson && (
+        <CalendarExportModal
+          onClose={() => setCalendarExportPerson(null)}
+          defaultPersonId={calendarExportPerson.id}
         />
       )}
     </div>

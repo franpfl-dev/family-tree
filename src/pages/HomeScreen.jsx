@@ -3,9 +3,9 @@
  * The main landing page. Shows all family tree cards and a header.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, TreePine, Trash2, Eye, Users, Calendar, ChevronRight, Download, Upload } from 'lucide-react';
+import { Plus, TreePine, Trash2, Eye, Users, Calendar, ChevronRight, Download, Upload, Bell } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import {
   getRootPerson,
@@ -14,14 +14,35 @@ import {
   formatDateShort,
 } from '../utils/familyUtils';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import CalendarExportModal from '../components/CalendarExportModal';
+import NotificationBanner from '../components/NotificationBanner';
+import NotificationSettings from '../components/NotificationSettings';
+import UpcomingEvents from '../components/UpcomingEvents';
+import { checkAndNotifyToday, loadNotifPrefs } from '../utils/notifications';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
   const { state, deleteTree, exportData, importData } = useAppContext();
   const { trees, persons } = state;
 
-  const [deleteTarget, setDeleteTarget] = useState(null); // treeId to delete
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [importError, setImportError] = useState('');
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
+
+  // Register service worker and check today's events on load
+  useEffect(() => {
+    // Register SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {/* SW not critical */});
+    }
+    // Fire today's notifications if permitted
+    const prefs = loadNotifPrefs();
+    if (prefs.enabled) {
+      checkAndNotifyToday(persons, trees, prefs);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleOpenTree(treeId) {
     navigate(`/tree/${treeId}`);
@@ -52,6 +73,9 @@ export default function HomeScreen() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
+      {/* ── Notification Banner ─────────────────────────────────────────── */}
+      <NotificationBanner onPermissionGranted={() => {}} />
+
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header style={{
         background: 'var(--color-surface)',
@@ -99,9 +123,54 @@ export default function HomeScreen() {
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {trees.length > 0 && (
               <>
+                {/* Calendar Export */}
+                <button
+                  id="btn-calendar-export"
+                  onClick={() => setCalendarModalOpen(true)}
+                  title="Export to Calendar"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    padding: '0.5rem 0.875rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border)',
+                    background: 'transparent',
+                    color: 'var(--color-muted)',
+                    fontSize: '0.8rem', fontWeight: 600,
+                    fontFamily: 'var(--font-body)',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
+                >
+                  <Calendar size={14} /> <span className="breadcrumb-label">Calendar</span>
+                </button>
+
+                {/* Notifications */}
+                <button
+                  id="btn-notif-settings"
+                  onClick={() => setNotifSettingsOpen(true)}
+                  title="Notification settings"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    padding: '0.5rem 0.875rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border)',
+                    background: 'transparent',
+                    color: 'var(--color-muted)',
+                    fontSize: '0.8rem', fontWeight: 600,
+                    fontFamily: 'var(--font-body)',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
+                >
+                  <Bell size={14} /> <span className="breadcrumb-label">Notifications</span>
+                </button>
+
+                {/* Export JSON */}
                 <button
                   onClick={exportData}
                   title="Export data as JSON"
@@ -112,14 +181,14 @@ export default function HomeScreen() {
                     border: '1px solid var(--color-border)',
                     background: 'transparent',
                     color: 'var(--color-muted)',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
+                    fontSize: '0.8rem', fontWeight: 600,
+                    fontFamily: 'var(--font-body)',
                     transition: 'all 0.2s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-muted)'; }}
                 >
-                  <Download size={14} /> Export
+                  <Download size={14} /> <span className="breadcrumb-label">Export</span>
                 </button>
               </>
             )}
@@ -218,6 +287,9 @@ export default function HomeScreen() {
               {/* Add new card */}
               <AddNewCard onClick={() => navigate('/new-tree')} />
             </div>
+
+            {/* ── Upcoming Events Widget ────────────────────────────── */}
+            <UpcomingEvents />
           </>
         )}
       </main>
@@ -229,6 +301,16 @@ export default function HomeScreen() {
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteTarget(null)}
         />
+      )}
+
+      {/* ── Calendar Export Modal ──────────────────────────────────────── */}
+      {calendarModalOpen && (
+        <CalendarExportModal onClose={() => setCalendarModalOpen(false)} />
+      )}
+
+      {/* ── Notification Settings Modal ────────────────────────────────── */}
+      {notifSettingsOpen && (
+        <NotificationSettings onClose={() => setNotifSettingsOpen(false)} />
       )}
     </div>
   );

@@ -7,13 +7,13 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Pencil, Trash2, Baby, Heart, Link2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Baby, Heart, Link2, Plus, Calendar } from 'lucide-react';
 
 const MENU_W = 220;
 
 export default function ContextMenu({
   person,
-  position,   // { x, y } — cursor position in viewport coords
+  position,
   tree,
   onClose,
   onEditDetails,
@@ -22,6 +22,7 @@ export default function ContextMenu({
   onAddSpouse,
   onAddCrossLink,
   onAddLevelBelow,
+  onExportDates,
 }) {
   const menuRef = useRef(null);
 
@@ -160,6 +161,13 @@ export default function ContextMenu({
             icon={<Link2 size={14} />}
             label="Add Cross-Link"
             onClick={() => { onAddCrossLink(person); onClose(); }}
+          />
+
+          <MenuItem
+            id={`ctx-calendar-${person.id}`}
+            icon={<Calendar size={14} />}
+            label={`Export ${person.name?.split(' ')[0]}'s dates`}
+            onClick={() => { onExportDates?.(person); onClose(); }}
           />
 
           {canAddLevelBelow && (
