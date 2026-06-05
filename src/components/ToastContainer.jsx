@@ -4,7 +4,6 @@
  * Reads from AppContext toasts state.
  */
 
-import React from 'react';
 import { X, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 

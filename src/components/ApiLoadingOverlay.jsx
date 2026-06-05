@@ -3,7 +3,6 @@
  * Full-screen overlay shown while the initial API data load is in progress.
  */
 
-import React from 'react';
 
 export default function ApiLoadingOverlay() {
   return (

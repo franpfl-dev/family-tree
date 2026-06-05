@@ -15,7 +15,8 @@
  *   4. On API failure → show error toast, but keep local state intact (offline mode)
  */
 
-import React, {
+/* eslint-disable react-refresh/only-export-components */
+import {
   createContext, useContext, useReducer,
   useEffect, useCallback, useState, useRef,
 } from 'react';
@@ -89,18 +90,21 @@ export function AppProvider({ children }) {
   useEffect(() => { persistCache(state); }, [state]);
 
   // ── Toast helpers ─────────────────────────────────────────────────────────
-  function addToast(message, type = 'error') {
+  const addToast = useCallback((message, type = 'error') => {
     const id = Date.now();
     setToasts((t) => [...t, { id, message, type }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
-  }
-  function dismissToast(id) { setToasts((t) => t.filter((x) => x.id !== id)); }
+  }, []);
+
+  const dismissToast = useCallback((id) => {
+    setToasts((t) => t.filter((x) => x.id !== id));
+  }, []);
 
   // ── Generic API error handler ─────────────────────────────────────────────
-  function handleApiError(err, context = '') {
+  const handleApiError = useCallback((err, context = '') => {
     console.error(`API error${context ? ` (${context})` : ''}:`, err);
     addToast(err.message || 'An error occurred. Changes may not have saved.', 'error');
-  }
+  }, [addToast]);
 
   // ── Action Creators ───────────────────────────────────────────────────────
 
@@ -135,14 +139,12 @@ export function AppProvider({ children }) {
         handleApiError(err, 'createTree');
       }
     }, 0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const deleteTree = useCallback((treeId) => {
     dispatch({ type: ACTIONS.DELETE_TREE, payload: { treeId } });
     api.deleteTree(treeId).catch((err) => handleApiError(err, 'deleteTree'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const addPerson = useCallback((payload) => {
     dispatch({ type: ACTIONS.ADD_PERSON, payload });
@@ -181,8 +183,7 @@ export function AppProvider({ children }) {
         handleApiError(err, 'addPerson');
       }
     }, 0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const updatePerson = useCallback((personId, updates) => {
     dispatch({ type: ACTIONS.UPDATE_PERSON, payload: { personId, updates } });
@@ -218,35 +219,30 @@ export function AppProvider({ children }) {
         handleApiError(err, 'updatePerson');
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [addToast, handleApiError]);
 
   const deletePerson = useCallback((personId) => {
     dispatch({ type: ACTIONS.DELETE_PERSON, payload: { personId } });
     api.deletePerson(personId).catch((err) => handleApiError(err, 'deletePerson'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const linkSpouse = useCallback((personId, spouseId, anniversaryDate) => {
     dispatch({ type: ACTIONS.LINK_SPOUSE, payload: { personId, spouseId, anniversaryDate } });
     api.linkSpouse(personId, spouseId, anniversaryDate)
       .catch((err) => handleApiError(err, 'linkSpouse'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const addCrossLink = useCallback((fromPersonId, toPersonId, relationshipLabel, reverseLabel) => {
     dispatch({ type: ACTIONS.ADD_CROSS_LINK, payload: { fromPersonId, toPersonId, relationshipLabel, reverseLabel } });
     api.addCrossLink(fromPersonId, toPersonId, relationshipLabel, reverseLabel)
       .catch((err) => handleApiError(err, 'addCrossLink'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const removeCrossLink = useCallback((fromPersonId, toPersonId) => {
     dispatch({ type: ACTIONS.REMOVE_CROSS_LINK, payload: { fromPersonId, toPersonId } });
     api.removeCrossLink(fromPersonId, toPersonId)
       .catch((err) => handleApiError(err, 'removeCrossLink'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   const setActiveTree = useCallback((treeId) => {
     dispatch({ type: ACTIONS.SET_ACTIVE_TREE, payload: { treeId } });
@@ -272,8 +268,7 @@ export function AppProvider({ children }) {
         handleApiError(err, 'addTreeLevel');
       }
     }, 0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleApiError]);
 
   // ── Export ────────────────────────────────────────────────────────────────
   const exportData = useCallback(() => {

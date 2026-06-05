@@ -4,7 +4,6 @@
  * Also renders global UI: loading overlay and toast notifications.
  */
 
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import HomeScreen from './pages/HomeScreen';

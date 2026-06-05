@@ -5,7 +5,7 @@
  *          and collapse/expand toggle button for nodes with children.
  */
 
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { formatDateShort } from '../utils/familyUtils';
 import { NODE_W, NODE_H } from '../hooks/useTreeLayout';
 

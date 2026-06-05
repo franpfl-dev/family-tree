@@ -3,8 +3,7 @@
  * Confirmation dialog before deleting a tree.
  */
 
-import React from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function DeleteConfirmModal({ treeName, onConfirm, onCancel }) {
   return (

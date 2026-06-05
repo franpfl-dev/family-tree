@@ -67,10 +67,9 @@ export function familyReducer(state, action) {
 
       const newPersons = [root];
 
-      let spouse = null;
       if (spouseData && spouseData.name) {
         const spouseId = generateId();
-        spouse = {
+        const spouse = {
           id: spouseId,
           name: spouseData.name,
           gender: spouseData.gender || (rootPerson.gender === 'male' ? 'female' : 'male'),

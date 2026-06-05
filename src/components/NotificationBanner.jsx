@@ -5,8 +5,8 @@
  * Dismissed state is persisted in localStorage — never shown again after dismiss.
  */
 
-import React, { useState } from 'react';
-import { X, Bell, BellOff } from 'lucide-react';
+import { useState } from 'react';
+import { X, Bell } from 'lucide-react';
 import {
   notificationsSupported,
   notifPermission,

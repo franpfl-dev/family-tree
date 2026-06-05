@@ -4,7 +4,6 @@
  * If the person is the root, also warns that the entire tree will be deleted.
  */
 
-import React from 'react';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 
 export default function PersonDeleteModal({ person, tree, onConfirm, onCancel }) {

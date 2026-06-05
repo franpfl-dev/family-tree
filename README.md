@@ -1,16 +1,25 @@
-# React + Vite
+# 🌳 Family Tree App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A beautiful multi-tree family visualization application where a family is organized into manageable sub-trees and cross-linked to represent relationships (in-laws, cousins, etc.).
 
-Currently, two official plugins are available:
+## Features
+- **Interactive Tree Canvas**: Render and navigate through parent, spouse, and child relationships in interactive tree layouts.
+- **Cross-Linking**: Model real-world relations spanning across different sub-trees.
+- **Calendar Exports**: Download `.ics` files to sync birthdays and anniversaries with Google Calendar, Apple Calendar, or Outlook.
+- **Event Reminders**: Keep track of birthdays, anniversaries, and remembrance events with browser push notifications.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
+- **Frontend**: React (Context + Hooks), Tailwind CSS, Vite.
+- **Backend**: Express, MongoDB (Mongoose), Cloudinary for image hosting.
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2. **Start the development server**:
+   ```bash
+   npm run dev
+   ```

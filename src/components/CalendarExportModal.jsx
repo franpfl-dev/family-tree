@@ -7,7 +7,7 @@
  * Includes collapsible "How to import?" instructions for Google/Apple/Outlook.
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Download, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { collectEvents, countEventTypes, buildICS, downloadICS } from '../utils/icsExport';

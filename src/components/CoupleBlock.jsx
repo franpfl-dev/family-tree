@@ -247,7 +247,6 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
   const hasTriggeredLongPress = React.useRef(false);
 
   const isDeceased = !!person.dod;
-  const isPlaceholder = !!person.isPlaceholder;
 
   const borderColor = isHighlighted
     ? 'var(--color-link)'

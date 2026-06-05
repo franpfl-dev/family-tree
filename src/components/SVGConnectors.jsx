@@ -4,7 +4,6 @@
  * Uses cubic bezier curves for a smooth organic look.
  */
 
-import React from 'react';
 import { getConnectorPoints } from '../hooks/useTreeLayout';
 
 export default function SVGConnectors({ positions, parentChildPairs, canvasWidth, canvasHeight }) {

@@ -131,7 +131,7 @@ function loadNotifiedSet() {
 function saveNotifiedSet(set) {
   try {
     localStorage.setItem(NOTIFIED_KEY, JSON.stringify({ date: todayStr(), ids: [...set] }));
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 /**

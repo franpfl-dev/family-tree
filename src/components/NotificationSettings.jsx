@@ -4,7 +4,7 @@
  * Rendered as a modal/panel from the Home screen.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Bell, BellOff } from 'lucide-react';
 import {
   loadNotifPrefs,
@@ -13,7 +13,6 @@ import {
   notifPermission,
   requestPermission,
   showTestNotification,
-  DEFAULT_PREFS,
 } from '../utils/notifications';
 
 const HOURS = [

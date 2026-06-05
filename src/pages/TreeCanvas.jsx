@@ -16,9 +16,9 @@
  *   - collapsedIds is local state, resets on page reload
  */
 
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { buildLayout, CANVAS_PAD_X, CANVAS_PAD_TOP } from '../hooks/useTreeLayout';
 import { getChildrenOf } from '../utils/familyUtils';
@@ -51,6 +51,21 @@ export default function TreeCanvas() {
   const tree = trees.find((t) => t.id === treeId);
   const canvasRef = useRef(null); // for PNG export
 
+  // ── UI state ──────────────────────────────────────────────────────────────────
+  const [contextMenu, setContextMenu] = useState(null);
+  const [tooltipPerson, setTooltipPerson] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [editModalPerson, setEditModalPerson] = useState(null);
+  const [deleteModalPerson, setDeleteModalPerson] = useState(null);
+  const [addChildParent, setAddChildParent] = useState(null);
+  const [addSpousePerson, setAddSpousePerson] = useState(null);
+  const [editSpousePerson, setEditSpousePerson] = useState(null);
+  const [crossLinkPerson, setCrossLinkPerson] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarExportPerson, setCalendarExportPerson] = useState(null);
+
   useEffect(() => {
     if (treeId) setActiveTree(treeId);
   }, [treeId, setActiveTree]);
@@ -81,6 +96,11 @@ export default function TreeCanvas() {
   // ── Zoom + Pan state ──────────────────────────────────────────────────────────
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  const panRef = useRef(pan);
+  const scaleRef = useRef(scale);
+  useEffect(() => { panRef.current = pan; }, [pan]);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef(null);
   const panAtDragStart = useRef({ x: 0, y: 0 });
@@ -149,32 +169,15 @@ export default function TreeCanvas() {
   // still scrolls the page and the fixed canvas goes blank.  We attach
   // directly to the DOM element with { passive: false } to actually suppress it.
   const handleWheelRef = useRef(null);
-  handleWheelRef.current = (e) => {
-    e.preventDefault();
-    const delta = -e.deltaY * 0.001;
-    setScale((prev) => {
-      const next = Math.min(Math.max(prev + delta, MIN_SCALE), MAX_SCALE);
-      const rect = canvasWrapRef.current?.getBoundingClientRect();
-      if (!rect) return next;
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const ratio = next / prev;
-      setPan((p) => ({
-        x: mouseX - ratio * (mouseX - p.x),
-        y: mouseY - ratio * (mouseY - p.y),
-      }));
-      return next;
-    });
-  };
+  const handleTouchStartRef = useRef(null);
+  const handleTouchMoveRef = useRef(null);
+  const handleTouchEndRef = useRef(null);
 
-  // ── Touch: single-finger pan + two-finger pinch-zoom ──────────────────────────
-  // Touch handlers are also attached as non-passive via useEffect (see below)
-  // so that e.preventDefault() actually suppresses native page scroll while panning.
   const touchStart = useRef(null);
   const lastPinchDist = useRef(null);
   const scaleAtPinchStart = useRef(1);
   const panAtPinchStart = useRef({ x: 0, y: 0 });
-  const pinchMidpointStart = useRef({ x: 0, y: 0 });
+  const pinchMidpointStart = useRef({ type: 'pinch' }); // holds midpoint data
 
   const getTouchDist = (t1, t2) => {
     const dx = t1.clientX - t2.clientX;
@@ -182,69 +185,79 @@ export default function TreeCanvas() {
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // Keep latest pan/scale in refs so non-passive touch handlers can read them
-  // without stale-closure issues.
-  const panRef = useRef(pan);
-  const scaleRef = useRef(scale);
-  useEffect(() => { panRef.current = pan; }, [pan]);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  useEffect(() => {
+    handleWheelRef.current = (e) => {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.001;
+      setScale((prev) => {
+        const next = Math.min(Math.max(prev + delta, MIN_SCALE), MAX_SCALE);
+        const rect = canvasWrapRef.current?.getBoundingClientRect();
+        if (!rect) return next;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const ratio = next / prev;
+        setPan((p) => ({
+          x: mouseX - ratio * (mouseX - p.x),
+          y: mouseY - ratio * (mouseY - p.y),
+        }));
+        return next;
+      });
+    };
 
-  const handleTouchStartRef = useRef(null);
-  handleTouchStartRef.current = (e) => {
-    if (e.target === canvasWrapRef.current || !e.target.closest('[data-node]')) {
-      setContextMenu(null);
-      setTooltipPerson(null);
-    }
-    if (e.touches.length === 1) {
-      const t = e.touches[0];
-      touchStart.current = { x: t.clientX, y: t.clientY };
-      panAtDragStart.current = panRef.current;
-      lastPinchDist.current = null;
-    } else if (e.touches.length === 2) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      lastPinchDist.current = getTouchDist(t1, t2);
-      scaleAtPinchStart.current = scaleRef.current;
-      panAtPinchStart.current = panRef.current;
-      pinchMidpointStart.current = {
-        x: (t1.clientX + t2.clientX) / 2,
-        y: (t1.clientY + t2.clientY) / 2,
-      };
+    handleTouchStartRef.current = (e) => {
+      if (e.target === canvasWrapRef.current || !e.target.closest('[data-node]')) {
+        setContextMenu(null);
+        setTooltipPerson(null);
+      }
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchStart.current = { x: t.clientX, y: t.clientY };
+        panAtDragStart.current = panRef.current;
+        lastPinchDist.current = null;
+      } else if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        lastPinchDist.current = getTouchDist(t1, t2);
+        scaleAtPinchStart.current = scaleRef.current;
+        panAtPinchStart.current = panRef.current;
+        pinchMidpointStart.current = {
+          x: (t1.clientX + t2.clientX) / 2,
+          y: (t1.clientY + t2.clientY) / 2,
+        };
+        touchStart.current = null;
+      }
+    };
+
+    handleTouchMoveRef.current = (e) => {
+      e.preventDefault(); // works because listener is non-passive
+      if (e.touches.length === 1 && touchStart.current) {
+        const t = e.touches[0];
+        setPan({
+          x: panAtDragStart.current.x + (t.clientX - touchStart.current.x),
+          y: panAtDragStart.current.y + (t.clientY - touchStart.current.y),
+        });
+      } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const newDist = getTouchDist(t1, t2);
+        const ratio = newDist / lastPinchDist.current;
+        const newScale = Math.min(Math.max(scaleAtPinchStart.current * ratio, MIN_SCALE), MAX_SCALE);
+        const mx = pinchMidpointStart.current.x;
+        const my = pinchMidpointStart.current.y;
+        const scaleRatio = newScale / scaleAtPinchStart.current;
+        setScale(newScale);
+        setPan({
+          x: mx - scaleRatio * (mx - panAtPinchStart.current.x),
+          y: my - scaleRatio * (my - panAtPinchStart.current.y),
+        });
+      }
+    };
+
+    handleTouchEndRef.current = () => {
       touchStart.current = null;
-    }
-  };
-
-  const handleTouchMoveRef = useRef(null);
-  handleTouchMoveRef.current = (e) => {
-    e.preventDefault(); // works because listener is non-passive
-    if (e.touches.length === 1 && touchStart.current) {
-      const t = e.touches[0];
-      setPan({
-        x: panAtDragStart.current.x + (t.clientX - touchStart.current.x),
-        y: panAtDragStart.current.y + (t.clientY - touchStart.current.y),
-      });
-    } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const newDist = getTouchDist(t1, t2);
-      const ratio = newDist / lastPinchDist.current;
-      const newScale = Math.min(Math.max(scaleAtPinchStart.current * ratio, MIN_SCALE), MAX_SCALE);
-      const mx = pinchMidpointStart.current.x;
-      const my = pinchMidpointStart.current.y;
-      const scaleRatio = newScale / scaleAtPinchStart.current;
-      setScale(newScale);
-      setPan({
-        x: mx - scaleRatio * (mx - panAtPinchStart.current.x),
-        y: my - scaleRatio * (my - panAtPinchStart.current.y),
-      });
-    }
-  };
-
-  const handleTouchEndRef = useRef(null);
-  handleTouchEndRef.current = () => {
-    touchStart.current = null;
-    lastPinchDist.current = null;
-  };
+      lastPinchDist.current = null;
+    };
+  });
 
   // ── Attach non-passive wheel + touch listeners directly to DOM element ────────
   // This is the only way to call e.preventDefault() reliably in React 17+.
@@ -276,32 +289,21 @@ export default function TreeCanvas() {
     const params = new URLSearchParams(window.location.search);
     const highlight = params.get('highlight');
     if (highlight) {
-      setHighlightedId(highlight);
+      setTimeout(() => setHighlightedId(highlight), 0);
       const pos = positions.get(highlight);
       if (pos) {
         const cx = window.innerWidth / 2;
         const cy = (window.innerHeight - HEADER_H) / 2;
-        setPan({ x: cx - (pos.x + (pos.width || 0) / 2) * scale, y: cy - (pos.y + (pos.height || 0) / 2) * scale });
+        setTimeout(() => {
+          setPan({ x: cx - (pos.x + (pos.width || 0) / 2) * scale, y: cy - (pos.y + (pos.height || 0) / 2) * scale });
+        }, 0);
       }
       setTimeout(() => setHighlightedId(null), 3500);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── UI state ──────────────────────────────────────────────────────────────────
-  const [contextMenu, setContextMenu] = useState(null);
-  const [tooltipPerson, setTooltipPerson] = useState(null);
-  const [tooltipPosition, setTooltipPosition] = useState(null);
-  const [editModalPerson, setEditModalPerson] = useState(null);
-  const [deleteModalPerson, setDeleteModalPerson] = useState(null);
-  const [addChildParent, setAddChildParent] = useState(null);
-  const [addSpousePerson, setAddSpousePerson] = useState(null);
-  const [editSpousePerson, setEditSpousePerson] = useState(null);
-  const [crossLinkPerson, setCrossLinkPerson] = useState(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
-  const [calendarExportPerson, setCalendarExportPerson] = useState(null);
+
 
   // Keyboard shortcut: / or Ctrl+K for search
   useEffect(() => {
@@ -353,7 +355,7 @@ export default function TreeCanvas() {
     setContextMenu(null);
     setTooltipPerson(person);
     setTooltipPosition({ x: e.clientX, y: e.clientY });
-  }, []);
+  }, [setContextMenu, setTooltipPerson, setTooltipPosition]);
 
   // ── Node right click (Context Menu) ───────────────────────────────────────────
   const handleNodeRightClick = useCallback((e, person) => {
@@ -361,7 +363,7 @@ export default function TreeCanvas() {
     e.stopPropagation();
     setTooltipPerson(null);
     setContextMenu({ person, position: { x: e.clientX, y: e.clientY } });
-  }, []);
+  }, [setTooltipPerson, setContextMenu]);
 
   // ── Node long press (Context Menu on mobile) ──────────────────────────────────
   const handleNodeLongPress = useCallback((e, person) => {
@@ -370,7 +372,7 @@ export default function TreeCanvas() {
     setTooltipPerson(null);
     const touch = e.touches?.[0] || e.changedTouches?.[0] || e;
     setContextMenu({ person, position: { x: touch.clientX, y: touch.clientY } });
-  }, []);
+  }, [setTooltipPerson, setContextMenu]);
 
   // ── Resolve canonical parent of a couple ─────────────────────────────────────
   function resolveMainPersonForChild(person) {
@@ -412,6 +414,19 @@ export default function TreeCanvas() {
     setAddChildParent(mainPerson);
   }
 
+  const handleExportClick = useCallback(async () => {
+    if (!canvasRef.current) return;
+    setIsExporting(true);
+    try {
+      const { exportAsPng } = await import('../hooks/useExport');
+      await exportAsPng(canvasRef.current, tree?.name);
+    } catch (err) {
+      console.warn('PNG export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [tree]);
+
   function handleAddSpouse(person) {
     const livePerson = persons.find((p) => p.id === person.id) || person;
     if (livePerson.spouseId) {
@@ -430,23 +445,7 @@ export default function TreeCanvas() {
   // ── Minimap pan ────────────────────────────────────────────────────────────────
   const handleMinimapPan = useCallback((x, y) => setPan({ x, y }), []);
 
-  // ── PNG export ──────────────────────────────────────────────────────────
-  async function handleExportPng() {
-    if (!canvasRef.current) return;
-    setIsExporting(true);
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(canvasRef.current, { backgroundColor: null, scale: 1 });
-      const link = document.createElement('a');
-      link.download = `${tree?.name || 'family-tree'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch (err) {
-      console.warn('PNG export failed:', err);
-    } finally {
-      setIsExporting(false);
-    }
-  }
+
 
   // ── Zoom button helpers ────────────────────────────────────────────────────────
   const zoomIn = useCallback(() => {
@@ -673,6 +672,13 @@ export default function TreeCanvas() {
           onClick={() => setCalendarModalOpen(true)}
           label={<span style={{ fontSize: '15px' }}>📅</span>}
         />
+        <IconToolBtn
+          id="btn-export-png"
+          title="Export as PNG"
+          onClick={handleExportClick}
+          disabled={isExporting}
+          label={isExporting ? <span style={{ fontSize: '12px' }}>⏳</span> : <Download size={16} />}
+        />
       </div>
 
       {/* ── Minimap ─────────────────────────────────────────────────────────── */}
@@ -748,7 +754,6 @@ export default function TreeCanvas() {
       {editSpousePerson && (
         <EditSpouseModal
           person={editSpousePerson}
-          tree={tree}
           onClose={() => setEditSpousePerson(null)}
         />
       )}

@@ -6,7 +6,7 @@
  * Shows "Last edited" timestamp after saving.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Upload, Pencil, Check } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { formatDateFull } from '../utils/familyUtils';
@@ -53,8 +53,11 @@ export default function PersonEditModal({ person, tree, onClose, onOpenAddSpouse
 
   const spouse = person.spouseId ? persons.find(p => p.id === person.spouseId) : null;
 
+  const initialPersonId = useRef(person.id);
+
   // Re-sync form when person changes (e.g., saved from another panel)
   useEffect(() => {
+    if (person.id === initialPersonId.current) return;
     setForm({
       name: person.name || '',
       gender: person.gender || 'other',
@@ -65,7 +68,7 @@ export default function PersonEditModal({ person, tree, onClose, onOpenAddSpouse
       anniversaryDate: person.anniversaryDate || '',
     });
     setDirty(false);
-  }, [person.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [person]);
 
   // Close on Escape
   useEffect(() => {

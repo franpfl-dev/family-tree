@@ -9,7 +9,7 @@
  * Its only job is to receive NOTIFICATION_CHECK messages and fire Notification API calls.
  */
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 

@@ -4,7 +4,6 @@
  * Click area on minimap to pan canvas to that region.
  */
 
-import React, { useMemo } from 'react';
 import { NODE_W, NODE_H, COUPLE_W, COUPLE_H } from '../hooks/useTreeLayout';
 
 const MAP_W = 160;

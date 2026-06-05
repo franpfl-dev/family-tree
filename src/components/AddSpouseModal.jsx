@@ -4,7 +4,7 @@
  * Two tabs: "Create New" person, or "Link Existing" person from any tree.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Heart, Search, UserPlus, Link2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { searchPersons, getTreeName, generateId } from '../utils/familyUtils';

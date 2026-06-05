@@ -4,7 +4,7 @@
  * 4D from CLAUDE.md: search all persons, select relationship label, dispatch ADD_CROSS_LINK.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Link2, ChevronDown } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { searchPersons, getTreeName } from '../utils/familyUtils';

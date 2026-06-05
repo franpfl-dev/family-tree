@@ -3,7 +3,7 @@
  * The main landing page. Shows all family tree cards and a header.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, TreePine, Trash2, Eye, Users, Calendar, ChevronRight, Download, Upload, Bell } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';

@@ -5,7 +5,6 @@
  * Responsive down to 360px — collapses to icon-only on narrow screens.
  */
 
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, ChevronRight, ArrowLeft, TreePine, Search } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -15,7 +14,6 @@ export default function BreadcrumbBar({ tree, onSearchClick }) {
   const { state, popHistory } = useAppContext();
 
   const canGoBack = state.navigationHistory.length > 0;
-  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 420;
 
   function handleHome() { navigate('/'); }
   function handleBack() {

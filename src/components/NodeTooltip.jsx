@@ -4,7 +4,7 @@
  * Automatically closes on outside click/tap, Escape key, or after 3 seconds.
  */
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function NodeTooltip({ person, position, onClose }) {
   const tooltipRef = useRef(null);

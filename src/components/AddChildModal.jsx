@@ -4,7 +4,7 @@
  * Fields: Name, Gender, DOB, DOD toggle, Is Married toggle + spouse fields.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Baby, Heart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Modal, FormField, ToggleRow, inputStyle, primaryBtnStyle, cancelBtnStyle } from './modalShared';

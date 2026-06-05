@@ -10,12 +10,12 @@
  *   onClose    — close callback
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Heart, Check, Upload, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Modal, FormField, ToggleRow, inputStyle, primaryBtnStyle, cancelBtnStyle } from './modalShared';
 
-export default function EditSpouseModal({ person, tree, onClose }) {
+export default function EditSpouseModal({ person, onClose }) {
   const { state, updatePerson } = useAppContext();
   const { persons } = state;
   const photoRef = useRef(null);
@@ -37,9 +37,12 @@ export default function EditSpouseModal({ person, tree, onClose }) {
   const [saved,   setSaved]   = useState(false);
   const [errors,  setErrors]  = useState({});
 
+  const initialSpouseId = useRef(spouse?.id);
+
   // Keep form in sync if spouse changes externally
   useEffect(() => {
     if (!spouse) return;
+    if (spouse.id === initialSpouseId.current) return;
     setForm({
       name:            spouse.name            || '',
       gender:          spouse.gender          || 'other',
@@ -50,8 +53,7 @@ export default function EditSpouseModal({ person, tree, onClose }) {
       anniversaryDate: person.anniversaryDate || spouse.anniversaryDate || '',
     });
     setDirty(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spouse?.id]);
+  }, [spouse, person.anniversaryDate]);
 
   // Escape to close
   useEffect(() => {

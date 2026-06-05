@@ -4,7 +4,7 @@
  * Modal shell, FormField, ToggleRow, and shared style constants.
  */
 
-import React from 'react';
+/* eslint-disable react-refresh/only-export-components */
 import { X } from 'lucide-react';
 
 // ─── Modal Shell ──────────────────────────────────────────────────────────────

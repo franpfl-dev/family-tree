@@ -4,7 +4,7 @@
  * Sections: Personal Info, Marriage Info, Cross-Links
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { X, Upload, Heart, Link2, Trash2, Plus, ExternalLink } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';

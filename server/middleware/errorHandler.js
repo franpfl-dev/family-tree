@@ -4,6 +4,7 @@
  * Must be registered last (after all routes).
  */
 
+// eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, _next) {
   const status  = err.status || err.statusCode || 500;
   const message = err.message || 'Internal server error';

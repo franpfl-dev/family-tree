@@ -6,11 +6,11 @@
  * Step 3: Review & Confirm
  */
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, TreePine, Heart,
-  User, Upload, CalendarDays, Users, X,
+  Upload, Users, X,
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { formatDateFull } from '../utils/familyUtils';
@@ -304,7 +304,7 @@ function StepIndicator({ currentStep, totalSteps }) {
         const done = stepNum < currentStep;
         const active = stepNum === currentStep;
         return (
-          <React.Fragment key={stepNum}>
+          <Fragment key={stepNum}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
               <div style={{
                 width: '34px', height: '34px', borderRadius: '50%',
@@ -341,7 +341,7 @@ function StepIndicator({ currentStep, totalSteps }) {
                 transition: 'background 0.3s',
               }} />
             )}
-          </React.Fragment>
+          </Fragment>
         );
       })}
     </div>
