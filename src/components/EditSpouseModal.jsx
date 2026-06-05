@@ -16,7 +16,7 @@ import { useAppContext } from '../context/AppContext';
 import { Modal, FormField, ToggleRow, inputStyle, primaryBtnStyle, cancelBtnStyle } from './modalShared';
 
 export default function EditSpouseModal({ person, onClose }) {
-  const { state, updatePerson } = useAppContext();
+  const { state, updatePerson, deletePerson } = useAppContext();
   const { persons } = state;
   const photoRef = useRef(null);
 
@@ -108,9 +108,8 @@ export default function EditSpouseModal({ person, onClose }) {
 
   function handleUnlink() {
     if (!spouse) return;
-    if (window.confirm(`Are you sure you want to unlink ${spouse.name} and ${person.name}? They will remain in the database but will no longer be shown as married.`)) {
-      updatePerson(person.id, { spouseId: null, anniversaryDate: null });
-      updatePerson(spouse.id, { spouseId: null, anniversaryDate: null });
+    if (window.confirm(`Are you sure you want to delete ${spouse.name}? This will permanently remove them from the tree and database.`)) {
+      deletePerson(spouse.id);
       onClose();
     }
   }
@@ -263,7 +262,7 @@ export default function EditSpouseModal({ person, onClose }) {
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(192,57,43,0.08)'; e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(192,57,43,0.02)'; e.currentTarget.style.borderColor = 'rgba(192,57,43,0.3)'; }}
         >
-          Unlink Spouse
+          Delete Spouse
         </button>
         <button
           id="btn-edit-spouse-submit"

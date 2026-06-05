@@ -139,9 +139,9 @@ router.delete('/:id', async (req, res) => {
     await Person.findByIdAndUpdate(person.parentId, { $pull: { children: id } });
   }
 
-  // Unlink spouse
+  // Unlink spouse and clear anniversary
   if (person.spouseId) {
-    await Person.findByIdAndUpdate(person.spouseId, { $set: { spouseId: null } });
+    await Person.findByIdAndUpdate(person.spouseId, { $set: { spouseId: null, anniversaryDate: null } });
   }
 
   // Remove any cross-links pointing to deleted persons

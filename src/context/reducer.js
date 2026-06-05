@@ -255,6 +255,7 @@ export function familyReducer(state, action) {
           ...p,
           children: (p.children || []).filter((cid) => !toDelete.has(cid)),
           spouseId: toDelete.has(p.spouseId) ? null : p.spouseId,
+          anniversaryDate: toDelete.has(p.spouseId) ? null : p.anniversaryDate,
           crossLinks: (p.crossLinks || []).filter((cl) => !toDelete.has(cl.targetPersonId)),
         }));
 
