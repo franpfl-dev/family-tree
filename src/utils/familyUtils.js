@@ -162,7 +162,7 @@ export function countTreeMembers(treeId, persons) {
 // ─── Formatting Helpers ───────────────────────────────────────────────────────
 
 /**
- * Format a date string "YYYY-MM-DD" to a readable format "Jan 1980".
+ * Format a date string "YYYY-MM-DD" to a readable format "12 Jun 2022".
  * @param {string} dateStr
  * @returns {string}
  */
@@ -170,14 +170,17 @@ export function formatDateShort(dateStr) {
   if (!dateStr) return '';
   try {
     const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-GB', { month: 'short' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
   } catch {
     return dateStr;
   }
 }
 
 /**
- * Format a date string "YYYY-MM-DD" to a full readable format "January 1, 1980".
+ * Format a date string "YYYY-MM-DD" to a full readable format "12 June 2022".
  * @param {string} dateStr
  * @returns {string}
  */
@@ -185,7 +188,10 @@ export function formatDateFull(dateStr) {
   if (!dateStr) return '';
   try {
     const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-GB', { month: 'long' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
   } catch {
     return dateStr;
   }

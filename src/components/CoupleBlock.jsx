@@ -21,7 +21,10 @@ function formatBadgeDate(dateStr) {
   if (!dateStr) return '';
   try {
     const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('en-GB', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
   } catch { return dateStr; }
 }
 
@@ -303,7 +306,7 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
         width: NODE_W,
         height: COUPLE_H,
         background: isDeceased
-          ? 'rgba(245,245,245,0.95)'
+          ? 'rgba(200,200,200,0.9)'
           : 'var(--color-surface)',
         border: `${isHighlighted ? 2.5 : 1.5}px solid ${borderColor}`,
         borderRadius: isLeft ? '14px 0 0 14px' : '0 14px 14px 0',
@@ -318,7 +321,7 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
           : 'var(--shadow-node)',
         transition: 'box-shadow 0.2s, transform 0.15s',
         position: 'relative',
-        opacity: isDeceased ? 0.85 : 1,
+        opacity: isDeceased ? 0.75 : 1,
         flexShrink: 0,
       }}
       onMouseEnter={e => {
@@ -344,7 +347,7 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#fff', fontSize: '1.1rem', fontWeight: 700,
         overflow: 'hidden', flexShrink: 0,
-        filter: isDeceased ? 'grayscale(0.4)' : 'none',
+        filter: isDeceased ? 'grayscale(1)' : 'none',
       }}>
         {!person.profilePhoto && (person.name?.charAt(0)?.toUpperCase() || '?')}
       </div>
@@ -354,7 +357,7 @@ function MiniPersonCard({ person, isLeft, onClick, onContextMenu, onLongPress, i
         fontFamily: 'var(--font-display)',
         fontSize: '0.75rem',
         fontWeight: 700,
-        color: isDeceased ? 'var(--color-muted)' : 'var(--color-text)',
+        color: isDeceased ? 'var(--color-deceased)' : 'var(--color-text)',
         textAlign: 'center',
         lineHeight: 1.2,
         maxWidth: NODE_W - 12,

@@ -7,9 +7,9 @@
   --color-border:   #D4A96A;
   --color-primary:  #7B3F00;
   --color-accent:   #C0392B;
-  --color-text:     #2C1A0E;
+  --color-text:     #000000;
   --color-muted:    #A0856C;
-  --color-deceased: #9E9E9E;
+  --color-deceased: #757575;
   --color-link:     #1A6B8A;
 
   --font-display:   'Playfair Display', serif;
@@ -157,8 +157,8 @@ input, select, textarea {
 
 /* ─── 5B: Deceased node enhancements ─────────────────────────────────────── */
 .node-deceased {
-  filter: grayscale(0.25);
-  opacity: 0.88;
+  filter: grayscale(0.6);
+  opacity: 0.80;
 }
 
 /* ─── Global animations ──────────────────────────────────────────────────── */

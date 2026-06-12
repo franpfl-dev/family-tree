@@ -42,7 +42,7 @@ export default function PersonNode({
   const bgColor = isPlaceholder
     ? 'rgba(253,246,236,0.5)'
     : isDeceased
-      ? 'rgba(245,245,245,0.95)'
+      ? 'rgba(200,200,200,0.9)'
       : 'var(--color-surface)';
 
   const handleTouchStart = (e) => {
@@ -111,7 +111,7 @@ export default function PersonNode({
           : 'var(--shadow-node)',
         transition: 'box-shadow 0.2s, transform 0.15s, border-color 0.2s',
         userSelect: 'none',
-        opacity: isDeceased ? 0.85 : 1,
+        opacity: isDeceased ? 0.75 : 1,
       }}
       onMouseEnter={e => {
         if (isPlaceholder) return;
@@ -147,7 +147,7 @@ export default function PersonNode({
         fontWeight: 700,
         flexShrink: 0,
         overflow: 'hidden',
-        filter: isDeceased ? 'grayscale(0.4)' : 'none',
+        filter: isDeceased ? 'grayscale(1)' : 'none',
       }}>
         {!person.profilePhoto && (
           isPlaceholder
@@ -172,7 +172,7 @@ export default function PersonNode({
             fontFamily: 'var(--font-display)',
             fontSize: '0.82rem',
             fontWeight: 700,
-            color: isDeceased ? 'var(--color-muted)' : 'var(--color-text)',
+            color: isDeceased ? 'var(--color-deceased)' : 'var(--color-text)',
             maxWidth: NODE_W - 20,
             wordBreak: 'break-word',
           }}>
